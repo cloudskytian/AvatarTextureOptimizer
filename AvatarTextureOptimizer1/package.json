@@ -1,0 +1,24 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "displayName": "Avatar Texture Optimizer",
+  "version": "0.1.0-dev",
+  "unity": "2022.3",
+  "description": "The world's best VRChat avatar texture optimizer - analyzes mesh UVs, builds UV-to-texture mappings regardless of material parameters, and generates optimized atlases with quality-aware scaling.",
+  "author": {
+    "name": "fosa",
+    "url": "https://github.com/fosa"
+  },
+  "vpmDependencies": {
+    "nadena.dev.ndmf": ">=1.14.0",
+    "nadena.dev.modular-avatar": ">=1.18.0",
+    "com.vrchat.avatars": ">=3.7.0"
+  },
+  "keywords": [
+    "vrchat",
+    "texture",
+    "optimization",
+    "atlas",
+    "ndmf"
+  ],
+  "type": "tool"
+}

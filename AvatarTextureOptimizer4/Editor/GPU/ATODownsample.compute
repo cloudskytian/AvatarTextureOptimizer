@@ -1,0 +1,36 @@
+// Avatar Texture Optimizer (ATO)
+// Premultiplied-alpha 2x box downsample on the GPU (RenderTexture).
+// Used as a fast path for whole-texture resizing during quality evaluation.
+// GPU 上的预乘 alpha 2x 盒式下采样（RenderTexture）。用于质量评估中的整图缩放快速路径。
+//
+// Runs in sRGB storage space to match the CPU reference implementation (which operates on
+// straight sRGB values returned by Texture2D.GetPixels). / 在 sRGB 存储空间运行，与 CPU 参考实现
+//（基于 GetPixels 返回的直通 sRGB 值）保持一致。
+
+#pragma kernel Downsample2x
+
+Texture2D<float4> _SrcTex;
+RWTexture2D<float4> _DstTex;
+
+[numthreads(8, 8, 1)]
+void Downsample2x(uint3 id : SV_DispatchThreadID)
+{
+    uint2 uv = id.xy * 2;
+
+    float4 c00 = _SrcTex[uv];
+    float4 c10 = _SrcTex[uv + uint2(1, 0)];
+    float4 c01 = _SrcTex[uv + uint2(0, 1)];
+    float4 c11 = _SrcTex[uv + uint2(1, 1)];
+
+    // Premultiply, average, then unpremultiply (alpha-preserving). / 预乘、平均、再反预乘（保留 alpha）。
+    c00.rgb *= c00.a;
+    c10.rgb *= c10.a;
+    c01.rgb *= c01.a;
+    c11.rgb *= c11.a;
+
+    float4 sum = (c00 + c10 + c01 + c11) * 0.25;
+    float a = sum.a;
+    float3 rgb = a > 0.0001 ? sum.rgb / a : float3(0.0, 0.0, 0.0);
+
+    _DstTex[id.xy] = float4(rgb, a);
+}

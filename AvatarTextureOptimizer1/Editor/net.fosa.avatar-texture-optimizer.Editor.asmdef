@@ -1,0 +1,46 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.Editor",
+    "rootNamespace": "net.fosa.avatar_texture_optimizer.Editor",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.Runtime",
+        "nadena.dev.ndmf.runtime",
+        "nadena.dev.ndmf"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "nadena.dev.modular-avatar",
+            "expression": "",
+            "define": "ATO_MA_INSTALLED"
+        },
+        {
+            "name": "com.anatawa12.avatar-optimizer",
+            "expression": "",
+            "define": "ATO_AAO_INSTALLED"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "ATO_VRCSDK_INSTALLED"
+        },
+        {
+            "name": "jp.lilxyzw.liltoon",
+            "expression": "",
+            "define": "ATO_LILTOON_INSTALLED"
+        },
+        {
+            "name": "nadena.dev.ndmf",
+            "expression": "",
+            "define": "ATO_NDMF_INSTALLED"
+        }
+    ],
+    "noEngineReferences": false
+}

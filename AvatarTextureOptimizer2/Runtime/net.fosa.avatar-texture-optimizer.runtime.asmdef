@@ -1,0 +1,24 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer.runtime",
+  "rootNamespace": "Net.Fosa.AvatarTextureOptimizer",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.vrchat.avatars",
+      "expression": "",
+      "define": "ATO_VRCSDK3"
+    },
+    {
+      "name": "nadena.dev.ndmf",
+      "expression": "",
+      "define": "ATO_NDMF"
+    }
+  ],
+  "noEngineReferences": false
+}

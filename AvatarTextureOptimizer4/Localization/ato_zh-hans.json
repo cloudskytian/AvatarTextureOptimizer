@@ -1,0 +1,13 @@
+{
+  "entries": [
+    { "key": "error.multiple.components", "value": "此 Avatar 上存在多个 ATOAvatarOptimizer 组件，只允许存在一个。" },
+    { "key": "error.multiple.components:description", "value": "请从 Avatar 层级中移除多余的 ATOAvatarOptimizer 组件，仅保留一个。" },
+    { "key": "error.missing.vrcdescriptor", "value": "ATOAvatarOptimizer 必须挂载在带 VRCAvatarDescriptor 的对象上。" },
+    { "key": "error.missing.vrcdescriptor:description", "value": "请将 ATOAvatarOptimizer 组件移动到 Avatar 根对象（带 VRCAvatarDescriptor 的对象）上。" },
+    { "key": "warn.generic", "value": "ATO 警告（详见控制台）。" },
+    { "key": "report.title", "value": "Avatar Texture Optimizer 报告" },
+    { "key": "report.title:description", "value": "{0}" },
+    { "key": "report.renderers", "value": "渲染器" },
+    { "key": "report.atlases", "value": "图集" }
+  ]
+}

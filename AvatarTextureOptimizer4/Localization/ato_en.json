@@ -1,0 +1,13 @@
+{
+  "entries": [
+    { "key": "error.multiple.components", "value": "More than one ATOAvatarOptimizer component found on this avatar; exactly one is allowed." },
+    { "key": "error.multiple.components:description", "value": "Remove all but one ATOAvatarOptimizer component from the avatar hierarchy." },
+    { "key": "error.missing.vrcdescriptor", "value": "ATOAvatarOptimizer must be placed on the GameObject that holds the VRCAvatarDescriptor." },
+    { "key": "error.missing.vrcdescriptor:description", "value": "Move the ATOAvatarOptimizer component to the avatar root (the object with the VRCAvatarDescriptor)." },
+    { "key": "warn.generic", "value": "ATO warning (see console for details)." },
+    { "key": "report.title", "value": "Avatar Texture Optimizer Report" },
+    { "key": "report.title:description", "value": "{0}" },
+    { "key": "report.renderers", "value": "Renderers" },
+    { "key": "report.atlases", "value": "Atlases" }
+  ]
+}

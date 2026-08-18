@@ -1,0 +1,10 @@
+# Unity generated (in case someone drops this into a project)
+Library/
+Temp/
+Obj/
+Logs/
+UserSettings/
+*.csproj
+*.sln
+*.user
+.DS_Store

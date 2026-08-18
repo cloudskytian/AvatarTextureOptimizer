@@ -1,0 +1,35 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.Runtime",
+    "rootNamespace": "net.fosa.avatar_texture_optimizer",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "nadena.dev.ndmf",
+            "expression": "",
+            "define": "ATO_NDMF_INSTALLED"
+        },
+        {
+            "name": "nadena.dev.modular-avatar",
+            "expression": "",
+            "define": "ATO_MA_INSTALLED"
+        },
+        {
+            "name": "com.anatawa12.avatar-optimizer",
+            "expression": "",
+            "define": "ATO_AAO_INSTALLED"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "ATO_VRCSDK_INSTALLED"
+        }
+    ],
+    "noEngineReferences": false
+}
