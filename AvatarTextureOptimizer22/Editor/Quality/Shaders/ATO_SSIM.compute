@@ -1,0 +1,118 @@
+// AvatarTextureOptimizer
+// File: Editor/Quality/Shaders/ATO_SSIM.compute
+//
+// MS-SSIM (Wang, Simoncelli & Bovik, IEEE TIP 2004) computed on the GPU.
+//
+// Scheme per scale m (C1 = (K1*L)^2, C2 = (K2*L)^2, C3 = C2/2, K1=0.01,
+// K2=0.03, L=1):
+//   mu_x  = blur(x),             mu_y  = blur(y)
+//   var_x = blur(x^2) - mu_x^2,  var_y = blur(y^2) - mu_y^2
+//   cov   = blur(x*y) - mu_x*mu_y
+//   l = (2 mu_x mu_y + C1) / (mu_x^2 + mu_y^2 + C1)
+//   c = (2 sqrt(var_x) sqrt(var_y) + C2) / (var_x + var_y + C2)
+//   s = (cov + C3) / (sqrt(var_x) sqrt(var_y) + C3)
+// Then the pair (x,y) is downsampled by 2 and the process repeats.
+// The CPU reads back the per-scale l/c/s maps, averages them, and combines
+// with Wang's weights (0.0448, 0.2856, 0.3001, 0.2363, 0.1333 for 5 scales;
+// luminance only at the coarsest scale).
+//
+// MS-SSIM（Wang, Simoncelli & Bovik, IEEE TIP 2004）的 GPU 实现。
+// 每级方案如上：对 (x,y) 做高斯模糊求均值/方差/协方差，计算 l/c/s 图，
+// 然后 2x 下采样并重复。CPU 读回逐级 l/c/s 图求平均，并按 Wang 权重
+// （5 级：0.0448, 0.2856, 0.3001, 0.2363, 0.1333；亮度只在最粗一级）合并。
+
+#pragma kernel EncodePair
+#pragma kernel BlurX
+#pragma kernel BlurY
+#pragma kernel ComputeStats
+#pragma kernel Downsample2
+
+Texture2D<float4> InA;
+Texture2D<float4> InB;
+RWTexture2D<float4> OutA;
+RWTexture2D<float4> OutB;
+float4 TexSize;    // (w, h, 1/w, 1/h) of the INPUT textures
+float4 OutSize;    // (w, h, 1/w, 1/h) of the OUTPUT textures
+
+#define K1 0.01
+#define K2 0.03
+#define C1 (K1 * K1)
+#define C2 (K2 * K2)
+#define C3 (C2 * 0.5)
+
+// Encode: OutA = (x, y, x^2, y^2); OutB = (x*y, 0, 0, 0)
+// 编码：OutA = (x, y, x^2, y^2)；OutB = (x*y, 0, 0, 0)
+[numthreads(8, 8, 1)]
+void EncodePair(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TexSize.x || id.y >= (uint)TexSize.y) return;
+    float4 x = InA[id.xy];
+    float4 y = InB[id.xy];
+    OutA[id.xy] = float4(x.r, y.r, x.r * x.r, y.r * y.r);
+    OutB[id.xy] = float4(x.r * y.r, 0, 0, 0);
+}
+
+static const float G0 = 0.227027;
+static const float G1 = 0.1945946;
+static const float G2 = 0.1216216;
+
+[numthreads(8, 8, 1)]
+void BlurX(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TexSize.x || id.y >= (uint)TexSize.y) return;
+    int2 c = id.xy;
+    int2 mx = (int2)TexSize.xy - 1;
+    float4 sum = InA[c] * G0
+               + (InA[clamp(c + int2(1, 0), 0, mx)] + InA[clamp(c - int2(1, 0), 0, mx)]) * G1
+               + (InA[clamp(c + int2(2, 0), 0, mx)] + InA[clamp(c - int2(2, 0), 0, mx)]) * G2;
+    OutA[id.xy] = sum;
+}
+
+[numthreads(8, 8, 1)]
+void BlurY(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TexSize.x || id.y >= (uint)TexSize.y) return;
+    int2 c = id.xy;
+    int2 mx = (int2)TexSize.xy - 1;
+    float4 sum = InA[c] * G0
+               + (InA[clamp(c + int2(0, 1), 0, mx)] + InA[clamp(c - int2(0, 1), 0, mx)]) * G1
+               + (InA[clamp(c + int2(0, 2), 0, mx)] + InA[clamp(c - int2(0, 2), 0, mx)]) * G2;
+    OutA[id.xy] = sum;
+}
+
+// ComputeStats: from blurred (mu_x, mu_y, x2, y2) in InA and (xy) in InB,
+// write l/c/s into OutA (r=l, g=c, b=s, a=1).
+// ComputeStats：由模糊后的 (mu_x, mu_y, x2, y2)（InA）与 (xy)（InB）将
+// l/c/s 写入 OutA（r=l, g=c, b=s, a=1）。
+[numthreads(8, 8, 1)]
+void ComputeStats(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TexSize.x || id.y >= (uint)TexSize.y) return;
+    float4 e = InA[id.xy];
+    float mu_x = e.r, mu_y = e.g;
+    float var_x = max(e.b - mu_x * mu_x, 0.0);
+    float var_y = max(e.a - mu_y * mu_y, 0.0);
+    float cov = InB[id.xy].r - mu_x * mu_y;
+    float sx = sqrt(var_x + 1e-6);
+    float sy = sqrt(var_y + 1e-6);
+    float l = (2.0 * mu_x * mu_y + C1) / (mu_x * mu_x + mu_y * mu_y + C1);
+    float c = (2.0 * sx * sy + C2) / (var_x + var_y + C2);
+    float s = (cov + C3) / (sx * sy + C3);
+    OutA[id.xy] = float4(l, c, s, 1.0);
+}
+
+// Downsample2: 2x2 box downsample of the pair (operates on both textures).
+// Downsample2：对（两纹素）做 2x2 盒式下采样。
+[numthreads(8, 8, 1)]
+void Downsample2(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)OutSize.x || id.y >= (uint)OutSize.y) return;
+    int2 c = int2(id.xy * 2);
+    int2 mx = (int2)TexSize.xy - 1;
+    float4 a = (InA[clamp(c, 0, mx)] + InA[clamp(c + int2(1, 0), 0, mx)]
+              + InA[clamp(c + int2(0, 1), 0, mx)] + InA[clamp(c + int2(1, 1), 0, mx)]) * 0.25;
+    float4 b = (InB[clamp(c, 0, mx)] + InB[clamp(c + int2(1, 0), 0, mx)]
+              + InB[clamp(c + int2(0, 1), 0, mx)] + InB[clamp(c + int2(1, 1), 0, mx)]) * 0.25;
+    OutA[id.xy] = a;
+    OutB[id.xy] = b;
+}

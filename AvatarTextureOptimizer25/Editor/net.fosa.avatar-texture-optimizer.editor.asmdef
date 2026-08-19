@@ -1,0 +1,22 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.editor",
+    "rootNamespace": "FOSA.AvatarTextureOptimizer.Editor",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.runtime",
+        "nadena.dev.ndmf",
+        "nadena.dev.ndmf.runtime",
+        "VRC.SDK3A",
+        "VRC.SDK3A.Editor",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Mathematics",
+        "Unity.Jobs"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

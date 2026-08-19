@@ -1,9 +1,0 @@
-*.unitypackage
-*.zip
-/Library/
-/Temp/
-/obj/
-/Builds/
-/.idea/
-.vs/
-*.user

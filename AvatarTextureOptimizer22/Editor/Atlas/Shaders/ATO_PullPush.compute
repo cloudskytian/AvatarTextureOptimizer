@@ -1,0 +1,86 @@
+// AvatarTextureOptimizer
+// File: Editor/Atlas/Shaders/ATO_PullPush.compute
+//
+// GPU pull-push (infinite extrapolation) to fill empty atlas regions with
+// island edge colors.
+//   Pull: repeatedly down-sample by 2, averaging ONLY covered pixels; empty
+//         pixels at coarser levels stay empty.
+//   Push: repeatedly up-sample from coarse to fine; empty pixels at a finer
+//         level inherit the color of their parent (coarser) texel.
+// For transparent atlases, filled pixels keep alpha = 0 (spec).
+//
+// GPU pull-push（无限外扩）用岛边缘颜色填充图集空白区域。
+//   Pull：反复 2x 下采样，仅平均【被覆盖】像素；粗级上的空像素保持为空。
+//   Push：从粗到细反复上采样；细级上的空像素继承其父（更粗）纹素的颜色。
+// 透明图集填充像素 alpha 保持 0（规格）。
+
+#pragma kernel PullDown
+#pragma kernel PushUp
+
+Texture2D<float4> InColor;
+Texture2D<float>  InCover;
+RWTexture2D<float4> OutColor;
+RWTexture2D<float>  OutCover;
+float4 InSize;    // (w, h, 1/w, 1/h)
+float4 OutSize;   // (w, h, 1/w, 1/h) of the destination level
+int KeepAlphaZero; // 1 = transparent atlas: filled alpha stays 0
+
+[numthreads(8, 8, 1)]
+void PullDown(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)OutSize.x || id.y >= (uint)OutSize.y) return;
+    int2 c = int2(id.xy * 2);
+    int2 maxC = (int2)InSize.xy - 1;
+    int2 p[4] = {
+        clamp(c, 0, maxC),
+        clamp(c + int2(1, 0), 0, maxC),
+        clamp(c + int2(0, 1), 0, maxC),
+        clamp(c + int2(1, 1), 0, maxC)
+    };
+    float4 sum = 0;
+    float cov = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        float cw = InCover[p[i]];
+        sum += InColor[p[i]] * cw;
+        cov += cw;
+    }
+    if (cov > 0.5)
+    {
+        OutColor[id.xy] = sum / cov;
+        OutCover[id.xy] = 1.0;
+    }
+    else
+    {
+        OutColor[id.xy] = 0;
+        OutCover[id.xy] = 0;
+    }
+}
+
+[numthreads(8, 8, 1)]
+void PushUp(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)OutSize.x || id.y >= (uint)OutSize.y) return;
+    float alreadyCovered = OutCover[id.xy];
+    if (alreadyCovered > 0.5) return;
+
+    // Sample the parent (coarser) level at the corresponding location.
+    // 在对应位置采样父（更粗）级。
+    float2 uv = (id.xy + 0.5) * OutSize.zw;
+    float2 texel = uv * InSize.xy - 0.5;
+    float2 f = frac(texel);
+    int2 t0 = int2(texel);
+    int2 t1 = t0 + 1;
+    t0 = clamp(t0, 0, (int2)InSize.xy - 1);
+    t1 = clamp(t1, 0, (int2)InSize.xy - 1);
+    float4 c = lerp(lerp(InColor[t0], InColor[int2(t1.x, t0.y)], f.x),
+                    lerp(InColor[int2(t0.x, t1.y)], InColor[t1], f.x), f.y);
+    float parentCov = lerp(lerp(InCover[t0], InCover[int2(t1.x, t0.y)], f.x),
+                           lerp(InCover[int2(t0.x, t1.y)], InCover[t1], f.x), f.y);
+    if (parentCov > 0.5)
+    {
+        if (KeepAlphaZero != 0) c.a = 0;
+        OutColor[id.xy] = c;
+        OutCover[id.xy] = 1.0;
+    }
+}

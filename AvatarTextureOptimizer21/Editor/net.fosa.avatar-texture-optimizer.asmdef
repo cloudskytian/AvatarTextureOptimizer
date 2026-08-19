@@ -1,0 +1,35 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "rootNamespace": "net.fosa.avatar_texture_optimizer",
+  "references": [
+    "net.fosa.avatar-texture-optimizer.runtime",
+    "GUID:52b91be81217d414e838ed2b0b8e9c5c",
+    "GUID:7a2d85c1e4c1d4b8da6f4c1e2d3f4a5b",
+    "GUID:8c3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a",
+    "Unity.Burst",
+    "Unity.Collections",
+    "Unity.Mathematics"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.anatawa12.avatar-optimizer",
+      "expression": "1.8.0",
+      "define": "ATO_HAS_AAO"
+    },
+    {
+      "name": "jp.lilxyzw.liltoon",
+      "expression": "2.0.0",
+      "define": "ATO_HAS_LILTOON"
+    }
+  ],
+  "noEngineReferences": false
+}

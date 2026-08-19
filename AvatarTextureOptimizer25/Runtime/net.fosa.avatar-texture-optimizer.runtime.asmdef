@@ -1,0 +1,12 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.runtime",
+    "rootNamespace": "FOSA.AvatarTextureOptimizer",
+    "references": [
+        "VRC.SDK3A"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

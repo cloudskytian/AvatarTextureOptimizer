@@ -1,0 +1,146 @@
+// AvatarTextureOptimizer
+// File: Editor/Quality/Shaders/ATO_ImageOps.compute
+//
+// GPU image operators used by the quality engine:
+//   - Linearize:   sRGB -> linear (per channel)
+//   - EncodeSRGB:  linear -> sRGB
+//   - Premultiply: color *= alpha (linear space)
+//   - Downsample:  bilinear downsample (linear space)
+//   - Upsample:    bilinear upsample back to the original size
+//   - DetectSolid: mark pixels differing from the center pixel
+//   - DecodeNormal: [0,1] -> [-1,1] (normal maps)
+//   - ReencodeNormal: re-normalize + [-1,1] -> [0,1]
+//   - NormalAngle: per-pixel angular error vs reference normal (radians)
+//
+// 质量引擎使用的 GPU 图像算子：
+//   - Linearize：sRGB -> 线性（逐通道）
+//   - EncodeSRGB：线性 -> sRGB
+//   - Premultiply：颜色 *= alpha（线性空间）
+//   - Downsample：双线性下采样（线性空间）
+//   - Upsample：双线性上采样回原尺寸
+//   - DetectSolid：标记与中心像素不同的像素
+//   - DecodeNormal：[0,1] -> [-1,1]（法线贴图）
+//   - ReencodeNormal：重归一化 + [-1,1] -> [0,1]
+//   - NormalAngle：逐像素相对参考法线的角度误差（弧度）
+
+#pragma kernel Linearize
+#pragma kernel EncodeSRGB
+#pragma kernel Premultiply
+#pragma kernel Downsample
+#pragma kernel Upsample
+#pragma kernel DetectSolid
+#pragma kernel DecodeNormal
+#pragma kernel ReencodeNormal
+#pragma kernel NormalAngle
+
+RWTexture2D<float4> OutTex;
+Texture2D<float4> InTex;
+float4 TexSize;   // (w, h, 1/w, 1/h) of InTex
+float4 OutSize;   // (w, h, 1/w, 1/h) of OutTex
+Texture2D<float4> RefTex; // second input for NormalAngle / NormalAngle 的第二输入
+
+float SRGBToLinear(float c)
+{
+    return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+}
+
+float LinearToSRGB(float c)
+{
+    return c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1.0 / 2.4) - 0.055;
+}
+
+[numthreads(8, 8, 1)]
+void Linearize(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TexSize.x || id.y >= (uint)TexSize.y) return;
+    float4 c = InTex[id.xy];
+    OutTex[id.xy] = float4(SRGBToLinear(c.r), SRGBToLinear(c.g), SRGBToLinear(c.b), c.a);
+}
+
+[numthreads(8, 8, 1)]
+void EncodeSRGB(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)OutSize.x || id.y >= (uint)OutSize.y) return;
+    float4 c = InTex[id.xy];
+    OutTex[id.xy] = float4(LinearToSRGB(c.r), LinearToSRGB(c.g), LinearToSRGB(c.b), c.a);
+}
+
+[numthreads(8, 8, 1)]
+void Premultiply(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TexSize.x || id.y >= (uint)TexSize.y) return;
+    float4 c = InTex[id.xy];
+    OutTex[id.xy] = float4(c.rgb * c.a, c.a);
+}
+
+float4 BilinearSample(Texture2D<float4> tex, float2 uv, float4 size)
+{
+    float2 texel = uv * size.xy - 0.5;
+    float2 f = frac(texel);
+    int2 t0 = clamp(int2(texel), 0, (int2)size.xy - 1);
+    int2 t1 = clamp(t0 + 1, 0, (int2)size.xy - 1);
+    float4 c00 = tex[t0];
+    float4 c10 = tex[int2(t1.x, t0.y)];
+    float4 c01 = tex[int2(t0.x, t1.y)];
+    float4 c11 = tex[t1];
+    return lerp(lerp(c00, c10, f.x), lerp(c01, c11, f.x), f.y);
+}
+
+[numthreads(8, 8, 1)]
+void Downsample(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)OutSize.x || id.y >= (uint)OutSize.y) return;
+    float2 uv = (id.xy + 0.5) * OutSize.zw;
+    OutTex[id.xy] = BilinearSample(InTex, uv, TexSize);
+}
+
+[numthreads(8, 8, 1)]
+void Upsample(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)OutSize.x || id.y >= (uint)OutSize.y) return;
+    float2 uv = (id.xy + 0.5) * OutSize.zw;
+    OutTex[id.xy] = BilinearSample(InTex, uv, TexSize);
+}
+
+[numthreads(8, 8, 1)]
+void DetectSolid(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TexSize.x || id.y >= (uint)TexSize.y) return;
+    float4 center = InTex[uint2(TexSize.x / 2, TexSize.y / 2)];
+    float4 c = InTex[id.xy];
+    float d = max(abs(c.r - center.r), max(abs(c.g - center.g), max(abs(c.b - center.b), abs(c.a - center.a))));
+    OutTex[id.xy] = d > 1e-4 ? 1.0 : 0.0;
+}
+
+[numthreads(8, 8, 1)]
+void DecodeNormal(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TexSize.x || id.y >= (uint)TexSize.y) return;
+    float4 c = InTex[id.xy];
+    float3 n = c.rgb * 2.0 - 1.0;
+    OutTex[id.xy] = float4(n, c.a);
+}
+
+[numthreads(8, 8, 1)]
+void ReencodeNormal(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)OutSize.x || id.y >= (uint)OutSize.y) return;
+    float4 c = InTex[id.xy];
+    float3 n = c.rgb;
+    float len = max(length(n), 1e-6);
+    n /= len; // re-normalize after resampling / 重采样后重归一化
+    OutTex[id.xy] = float4(n * 0.5 + 0.5, c.a);
+}
+
+[numthreads(8, 8, 1)]
+void NormalAngle(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TexSize.x || id.y >= (uint)TexSize.y) return;
+    float3 a = InTex[id.xy].xyz;
+    float3 b = RefTex[id.xy].xyz;
+    float la = max(length(a), 1e-6);
+    float lb = max(length(b), 1e-6);
+    float cosA = dot(a / la, b / lb);
+    cosA = clamp(cosA, -1.0, 1.0);
+    OutTex[id.xy] = float4(acos(cosA), 0, 0, 1.0);
+}

@@ -1,0 +1,12 @@
+# 研读用的第三方库（不随包分发）
+ThirdParty/
+# Unity generated
+*.csproj
+*.sln
+Library/
+Temp/
+Obj/
+Logs/
+UserSettings/
+.vs/
+.idea/

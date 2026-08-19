@@ -1,0 +1,29 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "version": "0.1.0",
+  "displayName": "Avatar Texture Optimizer (ATO)",
+  "description": "Quality-driven UV island scaling, atlas generation and texture deduplication NDMF plugin for VRChat avatars.\n基于质量驱动的 UV 岛缩放、图集生成与贴图去重的 VRChat Avatar NDMF 插件。",
+  "unity": "2022.3",
+  "author": {
+    "name": "FOSA",
+    "url": "https://github.com/fosa/avatar-texture-optimizer"
+  },
+  "license": "MIT",
+  "keywords": [
+    "vrchat",
+    "ndmf",
+    "texture",
+    "atlas",
+    "optimization"
+  ],
+  "dependencies": {
+    "com.unity.burst": "1.8.4",
+    "com.unity.collections": "2.1.4",
+    "com.unity.mathematics": "1.2.6",
+    "com.unity.jobs": "0.70.0"
+  },
+  "vpmDependencies": {
+    "com.vrchat.avatars": ">=3.10.4",
+    "nadena.dev.ndmf": ">=1.14.4"
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "FOSA.AvatarTextureOptimizer.Editor",
+  "rootNamespace": "FOSA.AvatarTextureOptimizer.Editor",
+  "references": [
+    "FOSA.AvatarTextureOptimizer.Runtime",
+    "nadena.dev.ndmf",
+    "nadena.dev.ndmf.runtime",
+    "VRC.SDKBase",
+    "VRC.SDK3A",
+    "VRC.SDKBase.Editor",
+    "VRC.SDK3A.Editor",
+    "Unity.Burst",
+    "Unity.Collections",
+    "Unity.Mathematics"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.vrchat.avatars",
+      "expression": "",
+      "define": "ATO_VRCSDK3_AVATARS"
+    },
+    {
+      "name": "com.anatawa12.avatar-optimizer",
+      "expression": "",
+      "define": "ATO_AAO_PRESENT"
+    },
+    {
+      "name": "jp.lilxyzw.liltoon",
+      "expression": "",
+      "define": "ATO_LILTOON_PRESENT"
+    },
+    {
+      "name": "nadena.dev.modular-avatar",
+      "expression": "",
+      "define": "ATO_MA_PRESENT"
+    },
+    {
+      "name": "nadena.dev.ndmf",
+      "expression": "",
+      "define": "ATO_NDMF"
+    }
+  ],
+  "noEngineReferences": false
+}

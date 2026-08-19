@@ -1,0 +1,232 @@
+// ATO Compute Shader - GPU-accelerated quality evaluation and texture operations
+// ATO计算着色器 - GPU加速的质量评估和贴图操作
+
+// This compute shader handles:
+// 1. MS-SSIM calculation on GPU
+// 2. Bilinear resampling
+// 3. Pull-push edge extension
+// 4. Alpha premultiplication
+// 5. Normal map decode/encode
+// 此计算着色器处理：
+// 1. GPU上的MS-SSIM计算
+// 2. 双线性重采样
+// 3. Pull-push边缘扩展
+// 4. Alpha预乘
+// 5. 法线贴图解码/编码
+
+#pragma kernel CS_SSIM
+#pragma kernel CS_BilinearDownsample
+#pragma kernel CS_BilinearUpsample
+#pragma kernel CS_PullPush
+#pragma kernel CS_NormalMapProcess
+#pragma kernel CS_AlphaPremultiply
+
+// SSIM Constants
+static const float C1 = 0.01 * 0.01; // (K1 * L)^2 where K1=0.01, L=1.0
+static const float C2 = 0.03 * 0.03; // (K2 * L)^2 where K2=0.03, L=1.0
+
+// Input/Output textures
+Texture2D<float4> InputTexture : register(t0);
+Texture2D<float4> ComparisonTexture : register(t1);
+RWTexture2D<float4> OutputTexture : register(u0);
+RWStructuredBuffer<float> ResultBuffer : register(u1);
+
+SamplerState LinearSampler : register(s0);
+SamplerState PointSampler : register(s1);
+
+cbuffer Params : register(b0)
+{
+    int2 TextureSize;
+    int2 OutputSize;
+    float4 AdditionalParams; // x=padding, y=cutoff, z=reserved, w=reserved
+}
+
+// ============================================================
+// SSIM Kernel - Calculates Structural Similarity Index
+// SSIM核 - 计算结构相似性指数
+// ============================================================
+[numthreads(8, 8, 1)]
+void CS_SSIM(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TextureSize.x || id.y >= (uint)TextureSize.y)
+        return;
+
+    // 11x11 Gaussian window (sigma=1.5)
+    const int windowRadius = 5;
+    
+    float sumX = 0, sumY = 0;
+    float sumXX = 0, sumYY = 0, sumXY = 0;
+    float weightSum = 0;
+    
+    // Gaussian weights (simplified)
+    for (int dy = -windowRadius; dy <= windowRadius; dy++)
+    {
+        for (int dx = -windowRadius; dx <= windowRadius; dx++)
+        {
+            int2 samplePos = int2(id.x + dx, id.y + dy);
+            
+            // Clamp to bounds
+            samplePos = clamp(samplePos, int2(0, 0), TextureSize - int2(1, 1));
+            
+            float weight = exp(-0.5 * (dx * dx + dy * dy) / (1.5 * 1.5));
+            
+            float4 orig = InputTexture[samplePos];
+            float4 comp = ComparisonTexture[samplePos];
+            
+            // Luminance
+            float lumX = dot(orig.rgb, float3(0.2126, 0.7152, 0.0722));
+            float lumY = dot(comp.rgb, float3(0.2126, 0.7152, 0.0722));
+            
+            sumX += lumX * weight;
+            sumY += lumY * weight;
+            sumXX += lumX * lumX * weight;
+            sumYY += lumY * lumY * weight;
+            sumXY += lumX * lumY * weight;
+            weightSum += weight;
+        }
+    }
+    
+    float invW = 1.0 / weightSum;
+    float meanX = sumX * invW;
+    float meanY = sumY * invW;
+    float varX = sumXX * invW - meanX * meanX;
+    float varY = sumYY * invW - meanY * meanY;
+    float covXY = sumXY * invW - meanX * meanY;
+    
+    float ssim = ((2.0 * meanX * meanY + C1) * (2.0 * covXY + C2)) /
+                 ((meanX * meanX + meanY * meanY + C1) * (varX + varY + C2));
+    
+    // Store per-pixel SSIM
+    OutputTexture[id.xy] = float4(ssim, ssim, ssim, 1.0);
+    
+    // Accumulate for average (first thread stores count)
+    if (id.x == 0 && id.y == 0)
+    {
+        ResultBuffer[0] = 0; // Will be accumulated by reduction
+    }
+    
+    // Atomic add for global average (approximate)
+    InterlockedAdd(ResultBuffer[0], asuint(ssim * 10000));
+}
+
+// ============================================================
+// Bilinear Downsample Kernel
+// 双线性降采样核
+// ============================================================
+[numthreads(8, 8, 1)]
+void CS_BilinearDownsample(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)OutputSize.x || id.y >= (uint)OutputSize.y)
+        return;
+    
+    float2 uv = (float2(id.xy) + 0.5) / float2(OutputSize);
+    float4 color = InputTexture.SampleLevel(LinearSampler, uv, 0);
+    OutputTexture[id.xy] = color;
+}
+
+// ============================================================
+// Bilinear Upsample Kernel
+// 双线性升采样核
+// ============================================================
+[numthreads(8, 8, 1)]
+void CS_BilinearUpsample(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TextureSize.x || id.y >= (uint)TextureSize.y)
+        return;
+    
+    float2 uv = (float2(id.xy) + 0.5) / float2(TextureSize);
+    float4 color = ComparisonTexture.SampleLevel(LinearSampler, uv, 0);
+    OutputTexture[id.xy] = color;
+}
+
+// ============================================================
+// Pull-Push Edge Extension Kernel
+// Pull-Push边缘扩展核
+// ============================================================
+[numthreads(8, 8, 1)]
+void CS_PullPush(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TextureSize.x || id.y >= (uint)TextureSize.y)
+        return;
+    
+    float4 center = InputTexture[id.xy];
+    
+    // If pixel is opaque, keep as is
+    if (center.a > 0.01)
+    {
+        OutputTexture[id.xy] = center;
+        return;
+    }
+    
+    // For transparent pixels, average neighboring opaque pixels
+    float4 sum = float4(0, 0, 0, 0);
+    float weightSum = 0;
+    
+    for (int dy = -1; dy <= 1; dy++)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            if (dx == 0 && dy == 0) continue;
+            
+            int2 samplePos = int2(id.x + dx, id.y + dy);
+            samplePos = clamp(samplePos, int2(0, 0), TextureSize - int2(1, 1));
+            
+            float4 neighbor = InputTexture[samplePos];
+            if (neighbor.a > 0.01)
+            {
+                float w = (dx == 0 || dy == 0) ? 1.0 : 0.707;
+                sum += neighbor.rgb * w;
+                weightSum += w;
+            }
+        }
+    }
+    
+    if (weightSum > 0)
+    {
+        // Extend color but keep alpha as 0 (for pull-push)
+        OutputTexture[id.xy] = float4(sum.rgb / weightSum, 0);
+    }
+    else
+    {
+        OutputTexture[id.xy] = center;
+    }
+}
+
+// ============================================================
+// Normal Map Processing Kernel (decode, resample, re-normalize, encode)
+// 法线贴图处理核（解码、重采样、重归一化、编码）
+// ============================================================
+[numthreads(8, 8, 1)]
+void CS_NormalMapProcess(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)OutputSize.x || id.y >= (uint)OutputSize.y)
+        return;
+    
+    float2 uv = (float2(id.xy) + 0.5) / float2(OutputSize);
+    
+    // Sample and decode normal
+    float4 texColor = InputTexture.SampleLevel(LinearSampler, uv, 0);
+    float3 normal = float3(texColor.r * 2.0 - 1.0, texColor.g * 2.0 - 1.0, 0);
+    normal.z = sqrt(max(0, 1.0 - normal.x * normal.x - normal.y * normal.y));
+    
+    // Re-normalize
+    normal = normalize(normal);
+    
+    // Re-encode
+    OutputTexture[id.xy] = float4(normal.x * 0.5 + 0.5, normal.y * 0.5 + 0.5, 1.0, 1.0);
+}
+
+// ============================================================
+// Alpha Premultiply Kernel
+// Alpha预乘核
+// ============================================================
+[numthreads(8, 8, 1)]
+void CS_AlphaPremultiply(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)TextureSize.x || id.y >= (uint)TextureSize.y)
+        return;
+    
+    float4 color = InputTexture[id.xy];
+    // Premultiply alpha
+    OutputTexture[id.xy] = float4(color.rgb * color.a, color.a);
+}
