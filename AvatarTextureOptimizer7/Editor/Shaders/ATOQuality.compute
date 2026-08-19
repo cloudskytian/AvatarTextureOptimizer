@@ -1,0 +1,37 @@
+#pragma kernel CompareStats
+
+// Linear-space pair compare. Writes mean luma SSIM-ish terms + RMSE + mean |dE| proxy.
+// 线性空间成对比较。写出近似 SSIM 项、RMSE 与 |dE| 代理。
+
+Texture2D<float4> SrcA;
+Texture2D<float4> SrcB;
+RWStructuredBuffer<uint> Acc; // 0=count, 1=lumaA, 2=lumaB, 3=lumaA2, 4=lumaB2, 5=lumaAB, 6=rmse, 7=de
+
+uint Width;
+uint Height;
+
+float Luma(float3 c)
+{
+    return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+}
+
+[numthreads(8, 8, 1)]
+void CompareStats(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= Width || id.y >= Height) return;
+    float4 a = SrcA[id.xy];
+    float4 b = SrcB[id.xy];
+    float la = Luma(a.rgb);
+    float lb = Luma(b.rgb);
+    float3 d = a.rgb - b.rgb;
+    float rmse = dot(d, d);
+    float de = length(d) * 100.0; // coarse Lab-less proxy; CPU path uses real CIEDE2000
+    InterlockedAdd(Acc[0], 1);
+    InterlockedAdd(Acc[1], (uint)(la * 10000));
+    InterlockedAdd(Acc[2], (uint)(lb * 10000));
+    InterlockedAdd(Acc[3], (uint)(la * la * 10000));
+    InterlockedAdd(Acc[4], (uint)(lb * lb * 10000));
+    InterlockedAdd(Acc[5], (uint)(la * lb * 10000));
+    InterlockedAdd(Acc[6], (uint)(rmse * 10000));
+    InterlockedAdd(Acc[7], (uint)(de * 100));
+}

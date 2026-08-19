@@ -1,0 +1,32 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.Editor",
+    "rootNamespace": "net.fosa.ato.editor",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.Runtime",
+        "nadena.dev.ndmf",
+        "nadena.dev.ndmf.runtime",
+        "VRC.SDK3A",
+        "VRC.SDK3A.Editor",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Jobs",
+        "Unity.Mathematics"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.0.0",
+            "define": "ATO_VRCSDK3"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -1,0 +1,33 @@
+{
+  "name": "Fosa.AvatarTextureOptimizer",
+  "rootNamespace": "Fosa.AvatarTextureOptimizer",
+  "references": [
+    "VRC.SDK3A",
+    "VRC.SDKBase"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.vrchat.avatars",
+      "expression": "3.7.0",
+      "define": "ATO_VRCSDK3_AVATARS"
+    },
+    {
+      "name": "com.anatawa12.avatar-optimizer",
+      "expression": "1.8.0",
+      "define": "ATO_AAO"
+    },
+    {
+      "name": "jp.lilxyzw.liltoon",
+      "expression": "1.0.0",
+      "define": "ATO_LILTOON"
+    }
+  ],
+  "noEngineReferences": false
+}

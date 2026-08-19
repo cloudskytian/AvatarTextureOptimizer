@@ -1,0 +1,19 @@
+{
+  "entries": [
+    { "key": "component.name", "value": "Avatar Texture Optimizer" },
+    { "key": "component.desc", "value": "Optimizes this avatar's textures: UV-island quality scaling, type-grouped atlas packing, and safe deduplication." },
+    { "key": "whitelist.name", "value": "Texture Whitelist" },
+    { "key": "whitelist.desc", "value": "Textures referenced by the listed objects skip all optimization." },
+    { "key": "quality.preset", "value": "Quality Preset" },
+    { "key": "quality.nearlossless", "value": "Near Lossless" },
+    { "key": "quality.high", "value": "High Quality" },
+    { "key": "quality.balanced", "value": "Balanced" },
+    { "key": "quality.performance", "value": "Performance" },
+    { "key": "quality.custom", "value": "Custom" },
+    { "key": "atlas.toggle", "value": "Generate Atlas" },
+    { "key": "platform.override", "value": "Platform Override" },
+    { "key": "language", "value": "Language" },
+    { "key": "report.title", "value": "Avatar Texture Optimizer — build report" },
+    { "key": "report.total", "value": "total elapsed" }
+  ]
+}

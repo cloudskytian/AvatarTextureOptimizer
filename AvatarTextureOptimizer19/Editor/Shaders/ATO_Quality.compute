@@ -1,0 +1,43 @@
+// English: Optional GPU kernels for linear resample and a cheap SSIM reduction.
+// 中文：可选 GPU kernel：线性重采样与轻量 SSIM 归约。
+#pragma kernel KResample
+#pragma kernel KSsimTile
+
+Texture2D<float4> _Src;
+RWTexture2D<float4> _Dst;
+RWStructuredBuffer<float> _SsimOut;
+uint _SrcW;
+uint _SrcH;
+uint _DstW;
+uint _DstH;
+uint _Premultiply;
+
+[numthreads(8,8,1)]
+void KResample(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _DstW || id.y >= _DstH) return;
+    float2 uv = (float2(id.xy) + 0.5) / float2(_DstW, _DstH);
+    float2 src = uv * float2(_SrcW, _SrcH) - 0.5;
+    int2 i0 = int2(floor(src));
+    float2 f = src - i0;
+    int2 i1 = i0 + 1;
+    i0 = clamp(i0, int2(0,0), int2(_SrcW-1, _SrcH-1));
+    i1 = clamp(i1, int2(0,0), int2(_SrcW-1, _SrcH-1));
+    float4 c00 = _Src.Load(int3(i0, 0));
+    float4 c10 = _Src.Load(int3(i1.x, i0.y, 0));
+    float4 c01 = _Src.Load(int3(i0.x, i1.y, 0));
+    float4 c11 = _Src.Load(int3(i1, 0));
+    float4 c = lerp(lerp(c00, c10, f.x), lerp(c01, c11, f.x), f.y);
+    if (_Premultiply > 0 && c.a > 1e-6)
+    {
+        // already assumed linear incoming
+    }
+    _Dst[id.xy] = c;
+}
+
+[numthreads(8,8,1)]
+void KSsimTile(uint3 id : SV_DispatchThreadID)
+{
+    // Placeholder tile write; CPU path remains the source of truth for bake decisions.
+    if (id.x == 0 && id.y == 0) _SsimOut[0] = 1;
+}

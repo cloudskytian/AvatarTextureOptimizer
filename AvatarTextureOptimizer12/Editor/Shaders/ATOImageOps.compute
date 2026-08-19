@@ -1,0 +1,379 @@
+// SPDX-License-Identifier: MIT
+// AvatarTextureOptimizer (ATO) - GPU image operations & quality metric maps.
+// AvatarTextureOptimizer (ATO) - GPU 图像运算与质量指标图。
+//
+// EN: Every kernel operates on flat StructuredBuffers so we never pay for texture allocation/format
+//     negotiation. Reductions that need order statistics (p95) are finished on the CPU; everything that is
+//     embarrassingly parallel happens here.
+// ZH: 所有 kernel 都在扁平的 StructuredBuffer 上工作，避免贴图分配与格式协商的开销。
+//     需要顺序统计量（95 分位）的归约在 CPU 上收尾；所有可完全并行的部分都在这里完成。
+
+#pragma kernel CSDownsample
+#pragma kernel CSUpsample
+#pragma kernel CSLuma
+#pragma kernel CSBlurH
+#pragma kernel CSBlurV
+#pragma kernel CSProducts
+#pragma kernel CSSsim
+#pragma kernel CSHalve
+#pragma kernel CSDeltaE
+#pragma kernel CSAlphaDiff
+#pragma kernel CSNormalAngle
+
+// ---- Shared parameters / 公共参数 ----
+uint4 _SrcSize;   // xy = width,height
+uint4 _DstSize;   // xy = width,height
+float4 _Params;   // generic scalar payload / 通用标量载荷
+
+StructuredBuffer<float4>   _SrcRGBA;
+StructuredBuffer<float4>   _SrcRGBA2;
+RWStructuredBuffer<float4> _DstRGBA;
+
+StructuredBuffer<float>    _SrcF;
+StructuredBuffer<float>    _SrcF2;
+StructuredBuffer<float>    _SrcF3;
+StructuredBuffer<float>    _SrcF4;
+StructuredBuffer<float>    _SrcF5;
+RWStructuredBuffer<float>  _DstF;
+RWStructuredBuffer<float>  _DstF2;
+
+#define GROUP 8
+
+// ============================================================================================
+// Resampling / 重采样
+// ============================================================================================
+
+// EN: Area-average (box) downsample, correct for arbitrary non-integer ratios.
+// ZH: 面积平均（box）下采样，对任意非整数比例都正确。
+[numthreads(GROUP, GROUP, 1)]
+void CSDownsample(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _DstSize.x || id.y >= _DstSize.y) return;
+
+    float sx = (float)_SrcSize.x / (float)_DstSize.x;
+    float sy = (float)_SrcSize.y / (float)_DstSize.y;
+
+    float x0 = id.x * sx, x1 = (id.x + 1) * sx;
+    float y0 = id.y * sy, y1 = (id.y + 1) * sy;
+
+    int ix0 = (int)floor(x0), ix1 = min((int)_SrcSize.x - 1, (int)ceil(x1) - 1);
+    int iy0 = (int)floor(y0), iy1 = min((int)_SrcSize.y - 1, (int)ceil(y1) - 1);
+
+    float4 sum = 0.0;
+    float wsum = 0.0;
+
+    for (int yy = iy0; yy <= iy1; yy++)
+    {
+        float wy = min(y1, yy + 1.0) - max(y0, (float)yy);
+        if (wy <= 0.0) continue;
+        for (int xx = ix0; xx <= ix1; xx++)
+        {
+            float wx = min(x1, xx + 1.0) - max(x0, (float)xx);
+            if (wx <= 0.0) continue;
+            float w = wx * wy;
+            sum += _SrcRGBA[yy * _SrcSize.x + xx] * w;
+            wsum += w;
+        }
+    }
+
+    _DstRGBA[id.y * _DstSize.x + id.x] = wsum > 0.0 ? sum / wsum : 0.0;
+}
+
+// EN: Bilinear upsample back to the reference resolution.
+// ZH: 双线性上采样回参考分辨率。
+[numthreads(GROUP, GROUP, 1)]
+void CSUpsample(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _DstSize.x || id.y >= _DstSize.y) return;
+
+    float sx = (float)_SrcSize.x / (float)_DstSize.x;
+    float sy = (float)_SrcSize.y / (float)_DstSize.y;
+
+    float fx = (id.x + 0.5) * sx - 0.5;
+    float fy = (id.y + 0.5) * sy - 0.5;
+
+    int x0 = clamp((int)floor(fx), 0, (int)_SrcSize.x - 1);
+    int y0 = clamp((int)floor(fy), 0, (int)_SrcSize.y - 1);
+    int x1 = clamp(x0 + 1, 0, (int)_SrcSize.x - 1);
+    int y1 = clamp(y0 + 1, 0, (int)_SrcSize.y - 1);
+
+    float tx = saturate(fx - x0);
+    float ty = saturate(fy - y0);
+
+    float4 a = lerp(_SrcRGBA[y0 * _SrcSize.x + x0], _SrcRGBA[y0 * _SrcSize.x + x1], tx);
+    float4 b = lerp(_SrcRGBA[y1 * _SrcSize.x + x0], _SrcRGBA[y1 * _SrcSize.x + x1], tx);
+    _DstRGBA[id.y * _DstSize.x + id.x] = lerp(a, b, ty);
+}
+
+// EN: Box-halve a scalar image, used by the MS-SSIM scale pyramid.
+// ZH: 对标量图做 2x2 均值缩半，供 MS-SSIM 的尺度金字塔使用。
+[numthreads(GROUP, GROUP, 1)]
+void CSHalve(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _DstSize.x || id.y >= _DstSize.y) return;
+
+    int x0 = min((int)_SrcSize.x - 1, (int)id.x * 2);
+    int x1 = min((int)_SrcSize.x - 1, (int)id.x * 2 + 1);
+    int y0 = min((int)_SrcSize.y - 1, (int)id.y * 2);
+    int y1 = min((int)_SrcSize.y - 1, (int)id.y * 2 + 1);
+
+    float v = _SrcF[y0 * _SrcSize.x + x0] + _SrcF[y0 * _SrcSize.x + x1]
+            + _SrcF[y1 * _SrcSize.x + x0] + _SrcF[y1 * _SrcSize.x + x1];
+    _DstF[id.y * _DstSize.x + id.x] = v * 0.25;
+}
+
+// ============================================================================================
+// SSIM / MS-SSIM
+// ============================================================================================
+
+// EN: Rec.709 relative luminance of a linear RGB pixel.
+// ZH: 线性 RGB 像素的 Rec.709 相对亮度。
+[numthreads(GROUP, GROUP, 1)]
+void CSLuma(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _SrcSize.x || id.y >= _SrcSize.y) return;
+    uint i = id.y * _SrcSize.x + id.x;
+    float4 a = _SrcRGBA[i];
+    float4 b = _SrcRGBA2[i];
+    _DstF[i]  = dot(a.rgb, float3(0.2126, 0.7152, 0.0722));
+    _DstF2[i] = dot(b.rgb, float3(0.2126, 0.7152, 0.0722));
+}
+
+// EN: 11-tap Gaussian, sigma = 1.5 (Wang et al. 2004), pre-normalised.
+// ZH: 11 抽头高斯核，sigma = 1.5（Wang 等，2004），已归一化。
+static const float kGauss[11] =
+{
+    0.00102838, 0.00759732, 0.03600077, 0.10936069, 0.21300688, 0.26601172,
+    0.21300688, 0.10936069, 0.03600077, 0.00759732, 0.00102838
+};
+
+[numthreads(GROUP, GROUP, 1)]
+void CSBlurH(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _SrcSize.x || id.y >= _SrcSize.y) return;
+    float s = 0.0;
+    [unroll] for (int i = 0; i < 11; i++)
+    {
+        int xx = clamp((int)id.x + i - 5, 0, (int)_SrcSize.x - 1);
+        s += _SrcF[id.y * _SrcSize.x + xx] * kGauss[i];
+    }
+    _DstF[id.y * _SrcSize.x + id.x] = s;
+}
+
+[numthreads(GROUP, GROUP, 1)]
+void CSBlurV(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _SrcSize.x || id.y >= _SrcSize.y) return;
+    float s = 0.0;
+    [unroll] for (int i = 0; i < 11; i++)
+    {
+        int yy = clamp((int)id.y + i - 5, 0, (int)_SrcSize.y - 1);
+        s += _SrcF[yy * _SrcSize.x + id.x] * kGauss[i];
+    }
+    _DstF[id.y * _SrcSize.x + id.x] = s;
+}
+
+// EN: a*a, b*b and a*b in one pass. _DstF = aa, _DstF2 = ab; bb is written back into _DstF at
+//     offset via a second dispatch with _Params.x selecting the product.
+// ZH: 一趟算出 a*a、b*b、a*b。_DstF = aa，_DstF2 = ab；bb 由第二次派发通过 _Params.x 选择乘积写出。
+[numthreads(GROUP, GROUP, 1)]
+void CSProducts(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _SrcSize.x || id.y >= _SrcSize.y) return;
+    uint i = id.y * _SrcSize.x + id.x;
+    float a = _SrcF[i];
+    float b = _SrcF2[i];
+
+    if (_Params.x < 0.5)      _DstF[i] = a * a;   // aa
+    else if (_Params.x < 1.5) _DstF[i] = b * b;   // bb
+    else                      _DstF[i] = a * b;   // ab
+}
+
+// EN: Per-pixel SSIM and contrast-structure terms.
+//     _SrcF = muA, _SrcF2 = muB, _SrcF3 = sAA, _SrcF4 = sBB, _SrcF5 = sAB.
+// ZH: 逐像素 SSIM 与对比度-结构项。
+//     _SrcF = muA，_SrcF2 = muB，_SrcF3 = sAA，_SrcF4 = sBB，_SrcF5 = sAB。
+[numthreads(GROUP, GROUP, 1)]
+void CSSsim(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _SrcSize.x || id.y >= _SrcSize.y) return;
+    uint i = id.y * _SrcSize.x + id.x;
+
+    const float c1 = 0.0001;   // (0.01)^2
+    const float c2 = 0.0009;   // (0.03)^2
+
+    float ma = _SrcF[i];
+    float mb = _SrcF2[i];
+    float va = max(0.0, _SrcF3[i] - ma * ma);
+    float vb = max(0.0, _SrcF4[i] - mb * mb);
+    float cab = _SrcF5[i] - ma * mb;
+
+    float l  = (2.0 * ma * mb + c1) / (ma * ma + mb * mb + c1);
+    float cs = (2.0 * cab + c2) / (va + vb + c2);
+
+    _DstF[i]  = l * cs;
+    _DstF2[i] = cs;
+}
+
+// ============================================================================================
+// CIEDE2000
+// ============================================================================================
+
+float LabF(float t)
+{
+    const float d = 6.0 / 29.0;
+    return t > d * d * d ? pow(t, 1.0 / 3.0) : t / (3.0 * d * d) + 4.0 / 29.0;
+}
+
+float3 LinearRgbToLab(float3 rgb)
+{
+    float x = dot(rgb, float3(0.4124564, 0.3575761, 0.1804375));
+    float y = dot(rgb, float3(0.2126729, 0.7151522, 0.0721750));
+    float z = dot(rgb, float3(0.0193339, 0.1191920, 0.9503041));
+
+    float fx = LabF(x / 0.95047);
+    float fy = LabF(y / 1.00000);
+    float fz = LabF(z / 1.08883);
+
+    return float3(116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz));
+}
+
+float HueDeg(float b, float ap)
+{
+    if (b == 0.0 && ap == 0.0) return 0.0;
+    float h = degrees(atan2(b, ap));
+    return h < 0.0 ? h + 360.0 : h;
+}
+
+// EN: Full CIEDE2000 (Sharma, Wu & Dalal 2005), kL = kC = kH = 1.
+// ZH: 完整 CIEDE2000（Sharma、Wu 与 Dalal，2005），kL = kC = kH = 1。
+float Ciede2000(float3 lab1, float3 lab2)
+{
+    float L1 = lab1.x, a1 = lab1.y, b1 = lab1.z;
+    float L2 = lab2.x, a2 = lab2.y, b2 = lab2.z;
+
+    float C1 = sqrt(a1 * a1 + b1 * b1);
+    float C2 = sqrt(a2 * a2 + b2 * b2);
+    float Cbar = 0.5 * (C1 + C2);
+
+    float Cbar7 = pow(Cbar, 7.0);
+    float G = 0.5 * (1.0 - sqrt(Cbar7 / (Cbar7 + 6103515625.0))); // 25^7
+
+    float a1p = (1.0 + G) * a1;
+    float a2p = (1.0 + G) * a2;
+    float C1p = sqrt(a1p * a1p + b1 * b1);
+    float C2p = sqrt(a2p * a2p + b2 * b2);
+
+    float h1p = HueDeg(b1, a1p);
+    float h2p = HueDeg(b2, a2p);
+
+    float dLp = L2 - L1;
+    float dCp = C2p - C1p;
+
+    float dhp = 0.0;
+    if (C1p * C2p != 0.0)
+    {
+        dhp = h2p - h1p;
+        if (dhp >  180.0) dhp -= 360.0;
+        if (dhp < -180.0) dhp += 360.0;
+    }
+    float dHp = 2.0 * sqrt(C1p * C2p) * sin(radians(dhp * 0.5));
+
+    float LbarP = 0.5 * (L1 + L2);
+    float CbarP = 0.5 * (C1p + C2p);
+
+    float hbarP;
+    if (C1p * C2p == 0.0) hbarP = h1p + h2p;
+    else
+    {
+        float diff = abs(h1p - h2p);
+        if (diff <= 180.0) hbarP = 0.5 * (h1p + h2p);
+        else if (h1p + h2p < 360.0) hbarP = 0.5 * (h1p + h2p + 360.0);
+        else hbarP = 0.5 * (h1p + h2p - 360.0);
+    }
+
+    float T = 1.0
+            - 0.17 * cos(radians(hbarP - 30.0))
+            + 0.24 * cos(radians(2.0 * hbarP))
+            + 0.32 * cos(radians(3.0 * hbarP + 6.0))
+            - 0.20 * cos(radians(4.0 * hbarP - 63.0));
+
+    float dTheta = 30.0 * exp(-pow((hbarP - 275.0) / 25.0, 2.0));
+    float CbarP7 = pow(CbarP, 7.0);
+    float Rc = 2.0 * sqrt(CbarP7 / (CbarP7 + 6103515625.0));
+    float Rt = -Rc * sin(radians(2.0 * dTheta));
+
+    float l50 = (LbarP - 50.0) * (LbarP - 50.0);
+    float Sl = 1.0 + (0.015 * l50) / sqrt(20.0 + l50);
+    float Sc = 1.0 + 0.045 * CbarP;
+    float Sh = 1.0 + 0.015 * CbarP * T;
+
+    float tl = dLp / Sl;
+    float tc = dCp / Sc;
+    float th = dHp / Sh;
+
+    return sqrt(tl * tl + tc * tc + th * th + Rt * tc * th);
+}
+
+// EN: _Params.x != 0 means the inputs are premultiplied and must be un-premultiplied first.
+// ZH: _Params.x 非 0 表示输入是预乘的，需要先反预乘。
+[numthreads(GROUP, GROUP, 1)]
+void CSDeltaE(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _SrcSize.x || id.y >= _SrcSize.y) return;
+    uint i = id.y * _SrcSize.x + id.x;
+
+    float4 ca = _SrcRGBA[i];
+    float4 cb = _SrcRGBA2[i];
+
+    if (_Params.x > 0.5)
+    {
+        ca.rgb /= max(ca.a, 1e-4);
+        cb.rgb /= max(cb.a, 1e-4);
+    }
+
+    _DstF[i] = Ciede2000(LinearRgbToLab(ca.rgb), LinearRgbToLab(cb.rgb));
+}
+
+// ============================================================================================
+// Alpha & normals / 透明度与法线
+// ============================================================================================
+
+// EN: _DstF = squared alpha error, _DstF2 = packed cutout classification for the cutoff in _Params.x
+//     (0 = neither, 1 = both, 2 = exactly one).
+// ZH: _DstF = alpha 误差平方，_DstF2 = 针对 _Params.x 中 cutoff 的裁剪分类
+//     （0 = 都不在，1 = 都在，2 = 只有一边在）。
+[numthreads(GROUP, GROUP, 1)]
+void CSAlphaDiff(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _SrcSize.x || id.y >= _SrcSize.y) return;
+    uint i = id.y * _SrcSize.x + id.x;
+
+    float aa = _SrcRGBA[i].a;
+    float bb = _SrcRGBA2[i].a;
+
+    float d = aa - bb;
+    _DstF[i] = d * d;
+
+    float cutoff = _Params.x;
+    bool pa = aa >= cutoff;
+    bool pb = bb >= cutoff;
+    _DstF2[i] = (pa && pb) ? 1.0 : ((pa || pb) ? 2.0 : 0.0);
+}
+
+// EN: Angular error in degrees between renormalised tangent-space normals.
+// ZH: 重归一化后的切线空间法线之间的角度误差（度）。
+[numthreads(GROUP, GROUP, 1)]
+void CSNormalAngle(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _SrcSize.x || id.y >= _SrcSize.y) return;
+    uint i = id.y * _SrcSize.x + id.x;
+
+    float3 na = _SrcRGBA[i].xyz;
+    float3 nb = _SrcRGBA2[i].xyz;
+
+    na = length(na) > 1e-6 ? normalize(na) : float3(0, 0, 1);
+    nb = length(nb) > 1e-6 ? normalize(nb) : float3(0, 0, 1);
+
+    _DstF[i] = degrees(acos(clamp(dot(na, nb), -1.0, 1.0)));
+}

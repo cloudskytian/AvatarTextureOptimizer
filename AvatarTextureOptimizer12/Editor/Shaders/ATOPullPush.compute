@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: MIT
+// AvatarTextureOptimizer (ATO) - GPU pull-push edge extension.
+// AvatarTextureOptimizer (ATO) - GPU pull-push 边缘外扩。
+//
+// EN: Classic Gortler-style pull-push. "Pull" builds a weighted mip pyramid of the covered signal,
+//     "push" walks back down and fills only uncovered texels from the coarser level. The result extends
+//     island edge colours infinitely outward, which is what keeps bilinear filtering and every mip level
+//     free of black/transparent bleeding.
+// ZH: 经典的 Gortler 式 pull-push。“pull”对已覆盖信号构建带权 mip 金字塔，
+//     “push”再逐级向下、只用更粗一级的结果填充未覆盖的纹素。
+//     这会把岛的边缘颜色无限外扩，从而让双线性过滤与每一级 mip 都不会出现黑边/透明渗色。
+
+#pragma kernel CSPull
+#pragma kernel CSPush
+#pragma kernel CSResolve
+
+uint4 _SrcSize;
+uint4 _DstSize;
+
+StructuredBuffer<float4>   _SrcColor;   // premultiplied by weight / 已按权重预乘
+StructuredBuffer<float>    _SrcWeight;
+RWStructuredBuffer<float4> _DstColor;
+RWStructuredBuffer<float>  _DstWeight;
+
+// EN: Coarser level, read during push. ZH: 更粗一级，push 时读取。
+StructuredBuffer<float4> _CoarseColor;
+StructuredBuffer<float>  _CoarseWeight;
+
+RWStructuredBuffer<float4> _Resolved;
+StructuredBuffer<float>    _Coverage;
+
+#define GROUP 8
+
+[numthreads(GROUP, GROUP, 1)]
+void CSPull(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _DstSize.x || id.y >= _DstSize.y) return;
+
+    int x0 = min((int)_SrcSize.x - 1, (int)id.x * 2);
+    int x1 = min((int)_SrcSize.x - 1, (int)id.x * 2 + 1);
+    int y0 = min((int)_SrcSize.y - 1, (int)id.y * 2);
+    int y1 = min((int)_SrcSize.y - 1, (int)id.y * 2 + 1);
+
+    uint i00 = y0 * _SrcSize.x + x0;
+    uint i10 = y0 * _SrcSize.x + x1;
+    uint i01 = y1 * _SrcSize.x + x0;
+    uint i11 = y1 * _SrcSize.x + x1;
+
+    float4 c = _SrcColor[i00] + _SrcColor[i10] + _SrcColor[i01] + _SrcColor[i11];
+    float  w = _SrcWeight[i00] + _SrcWeight[i10] + _SrcWeight[i01] + _SrcWeight[i11];
+
+    uint d = id.y * _DstSize.x + id.x;
+    _DstColor[d]  = c;
+    _DstWeight[d] = w;
+}
+
+// EN: _DstSize is the fine level here; _SrcSize is the coarse level.
+// ZH: 此处 _DstSize 是细一级，_SrcSize 是粗一级。
+[numthreads(GROUP, GROUP, 1)]
+void CSPush(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _DstSize.x || id.y >= _DstSize.y) return;
+
+    uint d = id.y * _DstSize.x + id.x;
+    if (_DstWeight[d] > 0.0) return;   // EN: already covered. ZH: 已覆盖。
+
+    int cx = min((int)_SrcSize.x - 1, (int)id.x / 2);
+    int cy = min((int)_SrcSize.y - 1, (int)id.y / 2);
+    uint c = cy * _SrcSize.x + cx;
+
+    float w = _CoarseWeight[c];
+    if (w <= 0.0) return;
+
+    _DstColor[d]  = _CoarseColor[c] / w;
+    _DstWeight[d] = 1.0;
+}
+
+// EN: Final pass: keep original colours where covered, take the filled colour elsewhere and force
+//     alpha to 0 so transparent atlases stay transparent.
+// ZH: 收尾：已覆盖处保留原色，其余处取填充色并强制 alpha 为 0，使透明图集依然透明。
+[numthreads(GROUP, GROUP, 1)]
+void CSResolve(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _DstSize.x || id.y >= _DstSize.y) return;
+    uint i = id.y * _DstSize.x + id.x;
+
+    if (_Coverage[i] > 0.5) return;
+
+    if (_SrcWeight[i] <= 0.0)
+    {
+        _Resolved[i] = float4(0, 0, 0, 0);
+        return;
+    }
+
+    float4 v = _SrcColor[i];
+    _Resolved[i] = float4(v.rgb, 0.0);
+}

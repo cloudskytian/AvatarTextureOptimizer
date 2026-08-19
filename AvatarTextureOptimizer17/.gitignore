@@ -1,0 +1,11 @@
+ref/
+Tests/AlgorithmHarness/bin/
+Tests/AlgorithmHarness/obj/
+*.user
+*.csproj
+*.sln
+Library/
+Temp/
+Obj/
+Build/
+Logs/

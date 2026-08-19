@@ -1,0 +1,23 @@
+# Unity 通用忽略项 / Common Unity ignores
+Library/
+Temp/
+Obj/
+obj/
+*.csproj
+*.sln
+.vs/
+.idea/
+*.user
+*.userprefs
+Build/
+Builds/
+Logs/
+UserSettings/
+
+# 编译验证产物 / Build verification artifacts
+verify/bin/
+verify/obj/
+
+# 系统文件 / OS files
+.DS_Store
+Thumbs.db
