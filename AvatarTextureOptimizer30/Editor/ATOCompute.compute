@@ -1,0 +1,339 @@
+// ATOCompute.compute — GPU 质量评估与图集合成内核 / GPU quality evaluation & atlas compositing kernels.
+// 说明：所有输入输出均为线性空间 float4（透明贴图预乘 alpha）。CPU 端负责统计归约（p95/均值/RMSE/IoU），
+// 保证与 Burst CPU 参考实现一致。pull-push 内核用于图集边缘颜色外扩（透明贴图 alpha 保持 0）。
+// Note: all I/O is linear-space float4 (premultiplied alpha for transparent textures). The CPU side performs
+// statistical reductions (p95/mean/RMSE/IoU) to stay consistent with the Burst reference implementation.
+// The pull-push kernel dilates atlas edge colors (alpha stays 0 for transparent atlases).
+
+#pragma kernel CSBoxHalf
+#pragma kernel CSBilinear
+#pragma kernel CSGaussianH
+#pragma kernel CSGaussianV
+#pragma kernel CSLuma
+#pragma kernel CSSsimCombine
+#pragma kernel CSFloatDiffSq
+#pragma kernel CSFloatProdDiff
+#pragma kernel CSDeltaE
+#pragma kernel CSNormalAngle
+#pragma kernel CSGraySqDiff
+#pragma kernel CSAlphaPair
+#pragma kernel CSPullPush
+
+// 高斯核（11-tap，σ=1.5，归一化）/ Gaussian kernel (11 taps, σ=1.5, normalized)
+static const float GaussKernel[11] = {
+    0.000003, 0.000229, 0.005977, 0.060598, 0.241732, 0.382925,
+    0.241732, 0.060598, 0.005977, 0.000229, 0.000003
+};
+
+static const float C1 = 1e-4; // (0.01)^2
+static const float C2 = 9e-4; // (0.03)^2
+
+// 2x 盒式降采样（线性空间、预乘安全）/ 2x box downsample (linear space, premultiply-safe)
+RWTexture2D<float4> _BoxSrc;
+Texture2D<float4> _BoxSrcRead;
+RWTexture2D<float4> _BoxDst;
+
+[numthreads(8, 8, 1)]
+void CSBoxHalf(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _BoxSrc.GetDimensions(size.x, size.y);
+    uint x = id.x * 2;
+    uint y = id.y * 2;
+    if (x + 1 >= size.x || y + 1 >= size.y) return;
+    float4 sum = _BoxSrcRead[uint2(x, y)] + _BoxSrcRead[uint2(x + 1, y)]
+               + _BoxSrcRead[uint2(x, y + 1)] + _BoxSrcRead[uint2(x + 1, y + 1)];
+    _BoxDst[id.xy] = sum * 0.25;
+}
+
+// 双线性缩放（像素中心映射）/ bilinear resize (pixel-center mapping)
+Texture2D<float4> _BiSrc;
+RWTexture2D<float4> _BiDst;
+float2 _BiSrcSize;
+float2 _BiInvSrcSize;
+
+[numthreads(8, 8, 1)]
+void CSBilinear(uint3 id : SV_DispatchThreadID)
+{
+    uint2 dsize;
+    _BiDst.GetDimensions(dsize.x, dsize.y);
+    if (id.x >= dsize.x || id.y >= dsize.y) return;
+    float2 p = (id.xy + 0.5) * _BiSrcSize / dsize - 0.5;
+    float2 p0 = floor(p);
+    float2 t = saturate(p - p0);
+    float2 c00 = saturate(p0) * _BiInvSrcSize;
+    float2 c11 = saturate(p0 + 1) * _BiInvSrcSize;
+    float2 c10 = float2(c11.x, c00.y);
+    float2 c01 = float2(c00.x, c11.y);
+    float4 a = lerp(_BiSrc[c00], _BiSrc[c10], t.x);
+    float4 b = lerp(_BiSrc[c01], _BiSrc[c11], t.x);
+    _BiDst[id.xy] = lerp(a, b, t.y);
+}
+
+// 高斯模糊（H/V 两 pass，float 缓冲）/ Gaussian blur (H/V passes, float buffers)
+RWTexture2D<float> _GaussSrc;
+Texture2D<float> _GaussSrcRead;
+RWTexture2D<float> _GaussDst;
+uint _GaussAxis; // 0=H, 1=V
+
+[numthreads(8, 8, 1)]
+void CSGaussianH(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _GaussDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    float acc = 0;
+    for (int k = -5; k <= 5; k++)
+    {
+        uint xx = clamp(id.x + k, 0u, size.x - 1u);
+        acc += _GaussSrcRead[uint2(xx, id.y)] * GaussKernel[k + 5];
+    }
+    _GaussDst[id.xy] = acc;
+}
+
+[numthreads(8, 8, 1)]
+void CSGaussianV(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _GaussDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    float acc = 0;
+    for (int k = -5; k <= 5; k++)
+    {
+        uint yy = clamp(id.y + k, 0u, size.y - 1u);
+        acc += _GaussSrcRead[uint2(id.x, yy)] * GaussKernel[k + 5];
+    }
+    _GaussDst[id.xy] = acc;
+}
+
+// 亮度（Rec.709，线性域）/ luma (Rec.709, linear domain)
+Texture2D<float4> _LumaSrc;
+RWTexture2D<float> _LumaDst;
+
+[numthreads(8, 8, 1)]
+void CSLuma(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _LumaDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    float4 c = _LumaSrc[id.xy];
+    _LumaDst[id.xy] = dot(c.xyz, float3(0.2126, 0.7152, 0.0722));
+}
+
+// 每像素 SSIM（输入：两图各自的均值/方差/协方差的模糊结果）/ per-pixel SSIM
+Texture2D<float> _SsimMa;
+Texture2D<float> _SsimMb;
+Texture2D<float> _SsimVa;
+Texture2D<float> _SsimVb;
+Texture2D<float> _SsimCov;
+RWTexture2D<float> _SsimDst;
+
+[numthreads(8, 8, 1)]
+void CSSsimCombine(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _SsimDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    float ma = _SsimMa[id.xy];
+    float mb = _SsimMb[id.xy];
+    float va = max(_SsimVa[id.xy], 0);
+    float vb = max(_SsimVb[id.xy], 0);
+    float cov = _SsimCov[id.xy];
+    float l = (2 * ma * mb + C1) / (ma * ma + mb * mb + C1);
+    float cs = (2 * cov + C2) / (va + vb + C2);
+    _SsimDst[id.xy] = l * cs;
+}
+
+// float 平方差：(a - b)^2（用于 SSIM 方差项）/ float squared diff: (a - b)^2 (for SSIM variance terms)
+Texture2D<float> _FdsA;
+Texture2D<float> _FdsB;
+RWTexture2D<float> _FdsDst;
+
+[numthreads(8, 8, 1)]
+void CSFloatDiffSq(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _FdsDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    float d = _FdsA[id.xy] - _FdsB[id.xy];
+    _FdsDst[id.xy] = d * d;
+}
+
+// float 交叉差积：(a - ma) * (b - mb)（用于 SSIM 协方差项）/ float cross diff product (for SSIM covariance)
+Texture2D<float> _FpdA;
+Texture2D<float> _FpdMa;
+Texture2D<float> _FpdB;
+Texture2D<float> _FpdMb;
+RWTexture2D<float> _FpdDst;
+
+[numthreads(8, 8, 1)]
+void CSFloatProdDiff(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _FpdDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    _FpdDst[id.xy] = (_FpdA[id.xy] - _FpdMa[id.xy]) * (_FpdB[id.xy] - _FpdMb[id.xy]);
+}
+
+// 每像素 CIEDE2000（输入线性 float4 对）/ per-pixel CIEDE2000 (linear float4 pairs)
+Texture2D<float4> _DeA;
+Texture2D<float4> _DeB;
+RWTexture2D<float> _DeDst;
+
+float3 LabF2(float3 c)
+{
+    float3 f;
+    f.x = c.x > 0.008856452 ? pow(c.x, 1.0 / 3.0) : (7.787037 * c.x + 16.0 / 116.0);
+    f.y = c.y > 0.008856452 ? pow(c.y, 1.0 / 3.0) : (7.787037 * c.y + 16.0 / 116.0);
+    f.z = c.z > 0.008856452 ? pow(c.z, 1.0 / 3.0) : (7.787037 * c.z + 16.0 / 116.0);
+    return f;
+}
+
+float3 LinearToLab(float3 lin)
+{
+    float3 xyz;
+    xyz.x = 0.4124564 * lin.x + 0.3575761 * lin.y + 0.1804375 * lin.z;
+    xyz.y = 0.2126729 * lin.x + 0.7151522 * lin.y + 0.0721750 * lin.z;
+    xyz.z = 0.0193339 * lin.x + 0.1191920 * lin.y + 0.9503041 * lin.z;
+    xyz /= float3(0.95047, 1.0, 1.08883);
+    float3 f = LabF2(xyz);
+    return float3(116 * f.y - 16, 500 * (f.x - f.y), 200 * (f.y - f.z));
+}
+
+float HueDeg(float a, float b)
+{
+    if (abs(a) < 1e-8 && abs(b) < 1e-8) return 0;
+    float h = degrees(atan2(b, a));
+    return h < 0 ? h + 360 : h;
+}
+
+[numthreads(8, 8, 1)]
+void CSDeltaE(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _DeDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    float3 lab1 = LinearToLab(_DeA[id.xy].xyz);
+    float3 lab2 = LinearToLab(_DeB[id.xy].xyz);
+
+    float C1a = sqrt(lab1.y * lab1.y + lab1.z * lab1.z);
+    float C2a = sqrt(lab2.y * lab2.y + lab2.z * lab2.z);
+    float Cb = (C1a + C2a) * 0.5;
+    float Cb7 = pow(Cb, 7);
+    float G = 0.5 * (1 - sqrt(Cb7 / (Cb7 + pow(25.0, 7))));
+    float a1p = (1 + G) * lab1.y;
+    float a2p = (1 + G) * lab2.y;
+    float C1p = sqrt(a1p * a1p + lab1.z * lab1.z);
+    float C2p = sqrt(a2p * a2p + lab2.z * lab2.z);
+    float h1p = HueDeg(a1p, lab1.z);
+    float h2p = HueDeg(a2p, lab2.z);
+
+    float dL = lab2.x - lab1.x;
+    float dC = C2p - C1p;
+    float dh = h2p - h1p;
+    if (dh > 180) dh -= 360;
+    else if (dh < -180) dh += 360;
+    float dH = 2 * sqrt(max(C1p * C2p, 0)) * sin(radians(dh) * 0.5);
+
+    float Lb = (lab1.x + lab2.x) * 0.5;
+    float Cpb = (C1p + C2p) * 0.5;
+    float hb;
+    float hSum = h1p + h2p;
+    if (abs(h1p - h2p) <= 180) hb = hSum * 0.5;
+    else if (hSum < 360) hb = (hSum + 360) * 0.5;
+    else hb = (hSum - 360) * 0.5;
+
+    float T = 1 - 0.17 * cos(radians(hb - 30)) + 0.24 * cos(radians(2 * hb))
+            + 0.32 * cos(radians(3 * hb + 6)) - 0.20 * cos(radians(4 * hb - 63));
+    float dTheta = 30 * exp(-pow((hb - 275) / 25, 2));
+    float Cpb7 = pow(Cpb, 7);
+    float Rc = 2 * sqrt(Cpb7 / (Cpb7 + pow(25.0, 7)));
+    float Lb50 = (Lb - 50) * (Lb - 50);
+    float Sl = 1 + 0.015 * Lb50 / sqrt(20 + Lb50);
+    float Sc = 1 + 0.045 * Cpb;
+    float Sh = 1 + 0.015 * Cpb * T;
+    float Rt = -sin(radians(2 * dTheta)) * Rc;
+
+    float dLk = dL / Sl;
+    float dCk = dC / Sc;
+    float dHk = dH / Sh;
+    _DeDst[id.xy] = sqrt(dLk * dLk + dCk * dCk + dHk * dHk + Rt * dCk * dHk);
+}
+
+// 法线角度误差（输入为解码后的单位法线 xyz，度）/ normal angular error (decoded unit normals, degrees)
+Texture2D<float4> _NaA;
+Texture2D<float4> _NaB;
+RWTexture2D<float> _NaDst;
+
+[numthreads(8, 8, 1)]
+void CSNormalAngle(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _NaDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    float3 n1 = normalize(_NaA[id.xy].xyz);
+    float3 n2 = normalize(_NaB[id.xy].xyz);
+    float d = clamp(dot(n1, n2), -1.0, 1.0);
+    _NaDst[id.xy] = degrees(acos(d));
+}
+
+// 灰度逐通道平方差（CPU 归约取最差通道）/ grayscale per-channel squared diff (CPU reduces, worst channel)
+Texture2D<float4> _GrA;
+Texture2D<float4> _GrB;
+RWTexture2D<float4> _GrDst;
+
+[numthreads(8, 8, 1)]
+void CSGraySqDiff(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _GrDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    float4 d = _GrA[id.xy] - _GrB[id.xy];
+    _GrDst[id.xy] = d * d;
+}
+
+// alpha 对（CPU 计算 IoU/RMSE）/ alpha pairs (CPU computes IoU/RMSE)
+Texture2D<float4> _ApA;
+Texture2D<float4> _ApB;
+RWTexture2D<float2> _ApDst;
+
+[numthreads(8, 8, 1)]
+void CSAlphaPair(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _ApDst.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    _ApDst[id.xy] = float2(_ApA[id.xy].w, _ApB[id.xy].w);
+}
+
+// pull-push 外扩：中心 alpha==0 时取邻居（透明贴图 alpha 保持 0；不透明图集全通道外扩）/
+// pull-push dilation: when center alpha==0, copy the neighbor (alpha stays 0 for transparent atlases; full channels for opaque)
+RWTexture2D<float4> _PpTex;
+int2 _PpOffset;
+uint _PpPreserveAlpha;
+
+[numthreads(8, 8, 1)]
+void CSPullPush(uint3 id : SV_DispatchThreadID)
+{
+    uint2 size;
+    _PpTex.GetDimensions(size.x, size.y);
+    if (id.x >= size.x || id.y >= size.y) return;
+    float4 center = _PpTex[id.xy];
+    if (center.w > 0.0 || (_PpPreserveAlpha == 0 && (center.x != 0 || center.y != 0 || center.z != 0))) return;
+    // 从 4 个偏移方向取最近的已填充像素 / take the nearest filled pixel from 4 offset directions
+    float4 best = center;
+    int2 dirs[4] = { int2(_PpOffset.x, 0), int2(-_PpOffset.x, 0), int2(0, _PpOffset.y), int2(0, -_PpOffset.y) };
+    for (int i = 0; i < 4; i++)
+    {
+        int2 p = int2(id.xy) + dirs[i];
+        if (p.x < 0 || p.y < 0 || p.x >= size.x || p.y >= size.y) continue;
+        float4 v = _PpTex[p];
+        if (v.w > 0.0)
+        {
+            best = v;
+            break;
+        }
+    }
+    if (_PpPreserveAlpha == 1) best.w = 0;
+    _PpTex[id.xy] = best;
+}

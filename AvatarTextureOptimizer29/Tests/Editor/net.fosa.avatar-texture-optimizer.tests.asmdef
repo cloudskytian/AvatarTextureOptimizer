@@ -1,0 +1,29 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.tests",
+    "rootNamespace": "net.fosa.ato.tests",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.runtime",
+        "net.fosa.avatar-texture-optimizer.editor",
+        "Unity.Burst",
+        "Unity.Mathematics",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "VRCSDKBase.dll",
+        "VRCSDK3A.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

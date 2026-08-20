@@ -1,0 +1,16 @@
+{
+  "component.title": "Avatar Texture Optimizer",
+  "component.whitelist": "Whitelist",
+  "component.generateAtlas": "Generate atlas",
+  "component.quality": "Quality preset",
+  "component.advanced": "Advanced quality parameters",
+  "component.platform": "Platform overrides",
+  "progress.collect": "Collecting materials, meshes and clips…",
+  "progress.quality": "Scaling UV islands to target quality…",
+  "progress.pack": "Packing atlases…",
+  "progress.apply": "Rewriting meshes and references…",
+  "report.title": "ATO bake report",
+  "warn.cross_seam": "UV crosses wrap seam; treated as whitelist.",
+  "warn.unknown_shader": "Unknown shader property usage; treated as whitelist.",
+  "warn.single_island_too_large": "A single UV group cannot fit the max atlas; atlas skipped."
+}

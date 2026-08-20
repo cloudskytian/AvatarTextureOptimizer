@@ -1,0 +1,11 @@
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+*.csproj
+*.sln
+*.user
+# 编译验证产物（不随包分发）
+Verify/bin/
+Verify/obj/

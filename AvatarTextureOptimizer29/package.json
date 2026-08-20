@@ -1,0 +1,20 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "displayName": "ATO: Avatar Texture Optimizer",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "Quality-driven UV island scaling + atlas repacking for VRChat avatars. NDMF plugin, runs after Modular Avatar and before AAO. / 质量驱动的UV岛缩放与图集重排，MA后AAO前运行。",
+  "author": {
+    "name": "fosa",
+    "url": "https://github.com/fosa"
+  },
+  "license": "MIT",
+  "vpmDependencies": {
+    "nadena.dev.ndmf": ">=1.14.0 <2.0.0",
+    "com.vrchat.avatars": ">=3.7.0 <3.11.0"
+  },
+  "dependencies": {
+    "com.unity.burst": "1.8.7",
+    "com.unity.mathematics": "1.2.6"
+  }
+}

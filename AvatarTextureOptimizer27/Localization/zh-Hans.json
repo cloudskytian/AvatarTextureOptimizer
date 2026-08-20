@@ -1,0 +1,16 @@
+{
+  "component.title": "Avatar 贴图优化器",
+  "component.whitelist": "白名单",
+  "component.generateAtlas": "生成图集",
+  "component.quality": "质量挡位",
+  "component.advanced": "高级质量参数",
+  "component.platform": "平台覆盖",
+  "progress.collect": "正在收集材质、网格与动画…",
+  "progress.quality": "正在按目标质量缩放 UV 岛…",
+  "progress.pack": "正在装箱图集…",
+  "progress.apply": "正在回写网格与引用…",
+  "report.title": "ATO 烘焙报告",
+  "warn.cross_seam": "UV 跨 wrap 缝，已按白名单跳过优化。",
+  "warn.unknown_shader": "无法识别的着色器贴图用途，已按白名单跳过。",
+  "warn.single_island_too_large": "单个 UV 组无法装入最大图集，已跳过图集化。"
+}

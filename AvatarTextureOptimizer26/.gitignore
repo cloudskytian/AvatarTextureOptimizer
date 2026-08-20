@@ -1,0 +1,13 @@
+*.csproj
+*.sln
+*.user
+*.pidb
+*.unityproj
+.vs/
+.idea/
+obj/
+bin/
+Temp/
+Library/
+Logs/
+.DS_Store
