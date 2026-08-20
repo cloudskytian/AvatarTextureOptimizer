@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0649;CS0414;CS0169;CS0067;CS0219;CS0108;CS0109;CS0114</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Stubs/**/*.cs" />
+    <Compile Include="../Runtime/**/*.cs" />
+    <Compile Include="../Editor/**/*.cs" />
+    <Compile Include="../Tests/**/*.cs" />
+  </ItemGroup>
+</Project>

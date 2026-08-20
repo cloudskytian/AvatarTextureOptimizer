@@ -1,8 +1,0 @@
-# Unity / build artefacts
-*.csproj
-*.sln
-obj/
-bin/
-Library/
-Temp/
-Logs/
