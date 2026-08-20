@@ -1,0 +1,21 @@
+{
+  "stage.collect": "正在收集贴图与材质",
+  "stage.analyze": "正在分析动画与 UV 映射",
+  "stage.process": "正在按目标质量缩放 UV 岛",
+  "stage.pack": "正在将 UV 岛装箱为图集",
+  "stage.apply": "正在写回网格、贴图与材质",
+  "done": "Avatar Texture Optimizer 处理完成",
+  "cancel": "已被用户取消",
+  "whitelist.multiple": "检测到多个 AvatarTextureOptimizer 组件；每个 Avatar 只允许挂载一个。",
+  "whitelist.noDescriptor": "AvatarTextureOptimizer 必须与 VRCAvatarDescriptor 挂在同一个物体上。",
+  "report.atlases": "生成的图集",
+  "report.textures": "优化的贴图",
+  "report.islands": "处理的 UV 岛",
+  "report.utilization": "利用率",
+  "report.saved": "预估节省的贴图体积",
+  "warning.skipTransform": "跳过贴图（存在 ST 变换/特殊 UV 用途）：{0}",
+  "warning.normalizeFailed": "UV 归一失败（跨 wrap 缝 / 依赖 repeat 采样）：{0}",
+  "warning.tooLarge": "UV 岛超过图集最大边长，跳过图集化（按质量缩放后单独保存）：{0}",
+  "warning.grayMultiChannel": "灰度贴图实际使用了多个通道但请求了单通道格式；已按多通道保存。",
+  "warning.noAAO": "未安装 Avatar Optimizer（AAO）；已跳过 UV 疏散兼容处理。"
+}

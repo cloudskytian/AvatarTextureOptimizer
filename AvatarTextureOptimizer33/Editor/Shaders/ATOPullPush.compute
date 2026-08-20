@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: MIT
+// EN: GPU pull-push (infinite bleed) fill for Avatar Texture Optimizer atlases.
+//     The alpha channel of the working texture carries *validity*, not the material alpha.
+// ZH: Avatar Texture Optimizer 图集的 GPU pull-push（无限外扩）填充。
+//     工作贴图的 alpha 通道存的是“有效性”，不是材质 alpha。
+
+#pragma kernel ATOPullDown
+#pragma kernel ATOPushUp
+
+Texture2D<float4>   _PyramidSrc;
+RWTexture2D<float4> _PyramidDst;
+
+uint4 _LevelSizeSrc;   // xy = source level size
+uint4 _LevelSizeDst;   // xy = destination level size
+
+// EN: Pull step: weighted 2x2 average of the valid texels of the finer level.
+// ZH: pull 步骤：对更细层级中的有效纹素做 2x2 加权平均。
+[numthreads(8, 8, 1)]
+void ATOPullDown(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _LevelSizeDst.x || id.y >= _LevelSizeDst.y) return;
+
+    float3 sum = 0;
+    float weight = 0;
+
+    [unroll]
+    for (uint dy = 0; dy < 2; dy++)
+    {
+        [unroll]
+        for (uint dx = 0; dx < 2; dx++)
+        {
+            uint2 p = id.xy * 2 + uint2(dx, dy);
+            if (p.x >= _LevelSizeSrc.x || p.y >= _LevelSizeSrc.y) continue;
+            float4 c = _PyramidSrc[p];
+            sum += c.rgb * c.a;
+            weight += c.a;
+        }
+    }
+
+    _PyramidDst[id.xy] = weight > 0 ? float4(sum / weight, 1) : float4(0, 0, 0, 0);
+}
+
+// EN: Push step: fill still invalid texels of the finer level from the coarser level.
+// ZH: push 步骤：用更粗层级填补更细层级中仍然无效的纹素。
+[numthreads(8, 8, 1)]
+void ATOPushUp(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _LevelSizeDst.x || id.y >= _LevelSizeDst.y) return;
+
+    float4 cur = _PyramidDst[id.xy];
+    if (cur.a > 0.5) return;
+
+    uint2 p = min(id.xy / 2, max(_LevelSizeSrc.xy, uint2(1, 1)) - uint2(1, 1));
+    float4 coarse = _PyramidSrc[p];
+    if (coarse.a > 0.0) _PyramidDst[id.xy] = float4(coarse.rgb, 1);
+}

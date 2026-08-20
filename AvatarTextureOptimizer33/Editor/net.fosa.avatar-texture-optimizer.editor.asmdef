@@ -1,0 +1,40 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.editor",
+    "rootNamespace": "Net.Fosa.AvatarTextureOptimizer.Editor",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.runtime",
+        "nadena.dev.ndmf",
+        "nadena.dev.ndmf.runtime",
+        "VRC.SDKBase",
+        "VRC.SDK3A",
+        "Unity.Burst",
+        "Unity.Mathematics"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "ATO_VRCSDK3_AVATARS"
+        },
+        {
+            "name": "com.anatawa12.avatar-optimizer",
+            "expression": "",
+            "define": "ATO_AAO"
+        },
+        {
+            "name": "jp.lilxyzw.liltoon",
+            "expression": "",
+            "define": "ATO_LILTOON"
+        }
+    ],
+    "noEngineReferences": false
+}

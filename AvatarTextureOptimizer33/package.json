@@ -1,0 +1,26 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "displayName": "Avatar Texture Optimizer",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "Non-destructive NDMF tool that analyses avatar meshes, maps mesh UVs to textures, rescales UV islands to a perceptual quality target and repacks them into atlases. 非破壊的にアバターのUV/テクスチャを解析し、知覚品質を保ったままアトラス化する NDMF ツール。",
+  "author": {
+    "name": "fosa"
+  },
+  "license": "MIT",
+  "vpmDependencies": {
+    "nadena.dev.ndmf": ">=1.14.0 <2.0.0",
+    "com.vrchat.avatars": ">=3.7.0"
+  },
+  "dependencies": {
+    "com.unity.burst": "1.8.7",
+    "com.unity.mathematics": "1.2.6"
+  },
+  "keywords": [
+    "vrchat",
+    "ndmf",
+    "texture",
+    "atlas",
+    "optimization"
+  ]
+}

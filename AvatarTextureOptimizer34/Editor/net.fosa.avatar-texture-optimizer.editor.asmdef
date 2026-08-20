@@ -1,0 +1,42 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.editor",
+    "rootNamespace": "net.fosa.avatar_texture_optimizer",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.runtime",
+        "nadena.dev.ndmf",
+        "VRC.SDKBase",
+        "VRC.SDK3A",
+        "VRC.SDK3A.Editor",
+        "VRC.SDKBase.Editor",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Mathematics"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.0.0",
+            "define": "ATO_VRCSDK3_AVATARS"
+        },
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.0.0",
+            "define": "NDMF_VRCSDK3_AVATARS"
+        },
+        {
+            "name": "com.anatawa12.avatar-optimizer",
+            "expression": "1.8.0",
+            "define": "ATO_AAO_PRESENT"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -1,0 +1,28 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.runtime",
+    "rootNamespace": "net.fosa.avatar_texture_optimizer",
+    "references": [
+        "VRC.SDKBase",
+        "VRC.SDK3A"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "3.0.0",
+            "define": "ATO_VRCSDK3_AVATARS"
+        },
+        {
+            "name": "com.vrchat.base",
+            "expression": "3.0.0",
+            "define": "ATO_VRCSDK3_BASE"
+        }
+    ],
+    "noEngineReferences": false
+}

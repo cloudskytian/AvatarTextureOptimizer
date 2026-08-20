@@ -1,0 +1,21 @@
+{
+  "stage.collect": "Collecting textures & materials",
+  "stage.analyze": "Analyzing animation & UV mapping",
+  "stage.process": "Scaling UV islands by target quality",
+  "stage.pack": "Packing islands into atlases",
+  "stage.apply": "Writing meshes, textures & materials",
+  "done": "Avatar Texture Optimizer finished",
+  "cancel": "Cancelled by user",
+  "whitelist.multiple": "Multiple AvatarTextureOptimizer components found; only one is allowed per avatar.",
+  "whitelist.noDescriptor": "AvatarTextureOptimizer requires a VRCAvatarDescriptor on the same GameObject.",
+  "report.atlases": "Atlases generated",
+  "report.textures": "Textures optimized",
+  "report.islands": "Islands processed",
+  "report.utilization": "Utilization",
+  "report.saved": "Estimated texture size saved",
+  "warning.skipTransform": "Skipping texture (ST transform / non-standard UV usage): {0}",
+  "warning.normalizeFailed": "UV normalization failed (wrap seam / repeat sampling): {0}",
+  "warning.tooLarge": "Island larger than max atlas size, skipping atlas (scaled standalone): {0}",
+  "warning.grayMultiChannel": "Grayscale texture has multiple used channels but single-channel format requested; kept multi-channel.",
+  "warning.noAAO": "Avatar Optimizer (AAO) not installed; UV evacuation compatibility skipped."
+}

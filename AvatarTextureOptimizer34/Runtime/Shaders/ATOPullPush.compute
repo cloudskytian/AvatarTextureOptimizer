@@ -1,0 +1,102 @@
+// AvatarTextureOptimizer - ATOPullPush
+// EN: Pull-push (Levin et al. 2004) kernels for infinite island-edge extension.
+//   Pull:    downsample 2x2, alpha-weighted color average (premultiplied).
+//   Push:    upsample from the level above, blend by alpha weights.
+//   ZeroEmptyAlpha: force alpha 0 where fully empty (transparent atlases, spec).
+// CN: pull-push（Levin 等 2004）核，用于岛边缘无限外扩。
+//   Pull：2x2 下采样，alpha 加权颜色平均（预乘）。
+//   Push：自上层上采样，按 alpha 权重混合。
+//   ZeroEmptyAlpha：全空区域强制 alpha 0（透明图集，按需求）。
+#pragma kernel Pull
+#pragma kernel Push
+#pragma kernel ZeroEmptyAlpha
+
+Texture2D<float4> InTex;
+Texture2D<float4> UpTex;
+RWTexture2D<float4> OutTex;
+int W;
+int H;
+int UpW;
+int UpH;
+int Level;
+
+// EN: Downsample 2x2 with alpha-weighted premultiplied average.
+// CN: 2x2 下采样，alpha 加权预乘平均。
+[numthreads(8, 8, 1)]
+void Pull(uint3 id : SV_DispatchThreadID)
+{
+    int x = id.x;
+    int y = id.y;
+    if (x >= W || y >= H) return;
+    int sx = x * 2, sy = y * 2;
+    float4 acc = 0;
+    float wsum = 0;
+    for (int dy = 0; dy < 2; dy++)
+    {
+        for (int dx = 0; dx < 2; dx++)
+        {
+            float4 c = InTex[int2(sx + dx, sy + dy)];
+            float w = c.a;
+            acc += float4(c.rgb * w, w);
+            wsum += w;
+        }
+    }
+    float4 outC;
+    if (wsum > 1e-5)
+    {
+        outC = float4(acc.rgb / wsum, acc.a * 0.25);
+    }
+    else
+    {
+        outC = 0;
+    }
+    OutTex[int2(x, y)] = outC;
+}
+
+// EN: Upsample + blend with own color, alpha-weighted.
+// CN: 上采样 + 与自身颜色按 alpha 加权混合。
+[numthreads(8, 8, 1)]
+void Push(uint3 id : SV_DispatchThreadID)
+{
+    int x = id.x;
+    int y = id.y;
+    if (x >= W || y >= H) return;
+    float4 self = InTex[int2(x, y)];
+    float2 upuv = (float2(x, y) + 0.5) * 0.5 - 0.25; // 像素中心映射
+    int ux = clamp((int)floor(upuv.x + 0.5), 0, UpW - 1);
+    int uy = clamp((int)floor(upuv.y + 0.5), 0, UpH - 1);
+    float4 up = UpTex[int2(ux, uy)];
+
+    float wa = self.a;
+    float wb = up.a;
+    float wsum = wa + wb;
+    float4 result;
+    if (wsum > 1e-5)
+    {
+        // EN: Blend premultiplied, then unpremultiply.
+        // CN: 预乘混合，再反预乘。
+        float3 premul = self.rgb * wa + up.rgb * wb;
+        float a = max(wa, wb); // EN: alpha takes the max (spread regions keep edge alpha)
+        result = float4(a > 1e-5 ? premul / a : 0, a);
+    }
+    else
+    {
+        result = self;
+    }
+    OutTex[int2(x, y)] = result;
+}
+
+// EN: Alpha 0 for fully-empty pixels (transparent atlases).
+// CN: 全空像素 alpha 强制 0（透明图集）。
+[numthreads(8, 8, 1)]
+void ZeroEmptyAlpha(uint3 id : SV_DispatchThreadID)
+{
+    int x = id.x;
+    int y = id.y;
+    if (x >= W || y >= H) return;
+    float4 c = OutTex[int2(x, y)];
+    if (c.a < 0.01)
+    {
+        OutTex[int2(x, y)] = float4(0, 0, 0, 0);
+    }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "displayName": "Avatar Texture Optimizer",
+  "version": "0.1.0-dev",
+  "unity": "2022.3",
+  "description": "ATO - The best VRChat avatar texture optimizer. NDMF tool: quality-driven UV island scaling and atlas generation for maximum texture utilization.",
+  "documentationUrl": "https://github.com/fosa/avatar-texture-optimizer",
+  "vpmDependencies": {
+    "nadena.dev.ndmf": "1.14.4"
+  },
+  "author": {
+    "name": "fosa",
+    "url": "https://github.com/fosa"
+  }
+}

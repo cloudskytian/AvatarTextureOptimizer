@@ -1,0 +1,20 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer.editor",
+  "rootNamespace": "Fosa.ATO.Editor",
+  "references": [
+    "net.fosa.avatar-texture-optimizer.runtime",
+    "net.fosa.avatar-texture-optimizer.burst",
+    "nadena.dev.ndmf"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

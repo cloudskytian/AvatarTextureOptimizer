@@ -1,0 +1,75 @@
+// AvatarTextureOptimizer - ATOQualityMetrics
+// EN: Masked SSIM compute kernel (11x11 Gaussian window, σ=1.5, C1/C2 constants). One thread per pixel;
+// results accumulate into a float buffer + count (averaged on the CPU side). Used by the GPU metric path,
+// which self-tests against the CPU implementation before enabling.
+// CN: 掩码 SSIM 计算核（11x11 高斯窗，σ=1.5，C1/C2 常量）。每像素一线程；
+//     结果累积到浮点缓冲 + 计数（CPU 侧取平均）。供 GPU 度量路径使用，启用前与 CPU 实现自检对比。
+#pragma kernel SSIM
+
+Texture2D<float> RefTex;
+Texture2D<float> CandTex;
+Texture2D<float> MaskTex;
+RWStructuredBuffer<uint> Result;   // EN: uint bits of float sum (InterlockedAdd) / CN: float 和的 uint 位
+RWStructuredBuffer<int> Count;
+int W;
+int H;
+
+float Gauss11(int offset)
+{
+    // EN: 11-tap Gaussian, sigma 1.5, normalized.
+    // CN: 11 抽头高斯，σ=1.5，已归一化。
+    float x = (float)offset;
+    float g = exp(-(x * x) / (2.0 * 1.5 * 1.5));
+    return g;
+}
+
+[numthreads(8, 8, 1)]
+void SSIM(uint3 id : SV_DispatchThreadID)
+{
+    int x = id.x;
+    int y = id.y;
+    if (x >= W || y >= H) return;
+    if (MaskTex[int2(x, y)] < 0.5) return;
+
+    // EN: Separable 11x11 Gaussian window with mask weighting.
+    // CN: 可分离 11x11 高斯窗，带掩码加权。
+    float sumW = 0, muR = 0, muC = 0, sR2 = 0, sC2 = 0, sRC = 0;
+    float totalW = 0;
+    [unroll]
+    for (int dy = -5; dy <= 5; dy++)
+    {
+        [unroll]
+        for (int dx = -5; dx <= 5; dx++)
+        {
+            int tx = clamp(x + dx, 0, W - 1);
+            int ty = clamp(y + dy, 0, H - 1);
+            float m = MaskTex[int2(tx, ty)];
+            float g = Gauss11(dx) * Gauss11(dy);
+            float w = m * g;
+            totalW += w;
+            float r = RefTex[int2(tx, ty)];
+            float c = CandTex[int2(tx, ty)];
+            muR += w * r;
+            muC += w * c;
+            sR2 += w * r * r;
+            sC2 += w * c * c;
+            sRC += w * r * c;
+        }
+    }
+    if (totalW < 1e-6) return;
+    muR /= totalW;
+    muC /= totalW;
+    sR2 /= totalW;
+    sC2 /= totalW;
+    sRC /= totalW;
+    float varR = max(0, sR2 - muR * muR);
+    float varC = max(0, sC2 - muC * muC);
+    float cov = sRC - muR * muC;
+    const float C1 = 0.01 * 0.01;
+    const float C2 = 0.03 * 0.03;
+    float num = (2.0 * muR * muC + C1) * (2.0 * cov + C2);
+    float den = (muR * muR + muC * muC + C1) * (varR + varC + C2);
+    float ssim = (num + 1e-6) / (den + 1e-6);
+    InterlockedAdd(Result[0], asuint(ssim));
+    InterlockedAdd(Count[0], 1);
+}

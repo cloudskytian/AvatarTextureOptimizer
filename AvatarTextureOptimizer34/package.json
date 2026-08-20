@@ -1,0 +1,24 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "version": "0.1.0",
+  "displayName": "Avatar Texture Optimizer",
+  "description": "NDMF-based VRChat avatar texture optimizer: analyzes mesh UV to texture mappings, scales UV islands by target quality algorithms (MS-SSIM / CIEDE2000 / alpha / normal / grayscale), trims unused UV space, and re-packs textures into one or more atlases to maximize texture utilization while preserving avatar appearance. / 基于NDMF的VRChat Avatar贴图优化工具：分析网格UV到贴图的映射，按目标质量算法缩放UV岛，剔除未使用UV区域，重组合并图集，在保证表现一致的前提下最大化贴图利用率。",
+  "author": { "name": "fosa", "url": "https://github.com/fosa" },
+  "unity": "2022.3",
+  "documentationUrl": "https://github.com/fosa/AvatarTextureOptimizer",
+  "vpmDependencies": {
+    "nadena.dev.ndmf": "1.14.4",
+    "com.vrchat.avatars": "3.10.4",
+    "com.vrchat.base": "3.10.4"
+  },
+  "dependencies": {
+    "nadena.dev.ndmf": "1.14.4",
+    "com.vrchat.avatars": "3.10.4",
+    "com.vrchat.base": "3.10.4",
+    "com.unity.burst": "1.8.0",
+    "com.unity.mathematics": "1.2.6",
+    "com.unity.collections": "1.2.4"
+  },
+  "keywords": [ "vrchat", "ndmf", "texture", "atlas", "optimizer", "avatar" ],
+  "license": "MIT"
+}

@@ -1,0 +1,325 @@
+{
+  "code": "en",
+  "strings": [
+    {
+      "key": "common.cancelling",
+      "value": "Cancelling..."
+    },
+    {
+      "key": "common.disabled",
+      "value": "Disabled"
+    },
+    {
+      "key": "common.enabled",
+      "value": "Enabled"
+    },
+    {
+      "key": "common.unknown",
+      "value": "Unknown"
+    },
+    {
+      "key": "error.cancelled",
+      "value": "ATO bake cancelled by user."
+    },
+    {
+      "key": "error.internal",
+      "value": "ATO internal error: {0}"
+    },
+    {
+      "key": "error.multipleRoots",
+      "value": "Multiple AtoAvatarRoot components on avatar {0}: only one is allowed. Bake aborted."
+    },
+    {
+      "key": "error.noVrcDescriptor",
+      "value": "AtoAvatarRoot on {0} has no VRCAvatarDescriptor: bake aborted."
+    },
+    {
+      "key": "report.atlasLine",
+      "value": "[{0}] {1}: {2} source texture(s), {3} island(s), {4}x{5}, utilization {6}%, saved {7}%."
+    },
+    {
+      "key": "report.details",
+      "value": "Details (per atlas):"
+    },
+    {
+      "key": "report.summary",
+      "value": "Summary: {0} textures, {1} UV groups, {2} islands, {3} atlas(es). Texture bytes: {4} -> {5} ({6}%). Total time: {7} ms."
+    },
+    {
+      "key": "report.textureLine",
+      "value": "Texture {0}: {1} -> {2} ({3}%), reason: {4}."
+    },
+    {
+      "key": "report.title",
+      "value": "ATO: Avatar Texture Optimizer"
+    },
+    {
+      "key": "report.warningCount",
+      "value": "{0} warning(s), {1} error(s)."
+    },
+    {
+      "key": "stage.animations",
+      "value": "Analyze animations & animators"
+    },
+    {
+      "key": "stage.compose",
+      "value": "Compose atlas textures"
+    },
+    {
+      "key": "stage.dedupeAssets",
+      "value": "Deduplicate materials/atlases & merge slots"
+    },
+    {
+      "key": "stage.dedupeTextures",
+      "value": "Deduplicate identical textures"
+    },
+    {
+      "key": "stage.import",
+      "value": "Apply texture import settings"
+    },
+    {
+      "key": "stage.islands",
+      "value": "Extract UV islands & groups"
+    },
+    {
+      "key": "stage.meshes",
+      "value": "Rewrite meshes & UVs"
+    },
+    {
+      "key": "stage.packing",
+      "value": "Pack islands into atlases"
+    },
+    {
+      "key": "stage.quality",
+      "value": "Compute target-quality scaling"
+    },
+    {
+      "key": "stage.references",
+      "value": "Update material/texture references"
+    },
+    {
+      "key": "stage.removeSelf",
+      "value": "Remove ATO components"
+    },
+    {
+      "key": "stage.report",
+      "value": "Build final report"
+    },
+    {
+      "key": "stage.scan",
+      "value": "Scan avatar (renderers/materials/textures)"
+    },
+    {
+      "key": "ui.advanced",
+      "value": "Advanced Options"
+    },
+    {
+      "key": "ui.atlasSection",
+      "value": "Atlas"
+    },
+    {
+      "key": "ui.compression",
+      "value": "Compression"
+    },
+    {
+      "key": "ui.compressionGray",
+      "value": "Grayscale"
+    },
+    {
+      "key": "ui.compressionNormal",
+      "value": "Normal map"
+    },
+    {
+      "key": "ui.compressionOpaque",
+      "value": "Opaque"
+    },
+    {
+      "key": "ui.compressionTransparent",
+      "value": "Transparent"
+    },
+    {
+      "key": "ui.densitySection",
+      "value": "Pixel Density"
+    },
+    {
+      "key": "ui.enableAndroid",
+      "value": "Android override"
+    },
+    {
+      "key": "ui.enableIos",
+      "value": "iOS override"
+    },
+    {
+      "key": "ui.enablePc",
+      "value": "PC override"
+    },
+    {
+      "key": "ui.generateAtlases",
+      "value": "Generate atlases"
+    },
+    {
+      "key": "ui.language",
+      "value": "Language"
+    },
+    {
+      "key": "ui.languageAuto",
+      "value": "Auto (NDMF)"
+    },
+    {
+      "key": "ui.languageSection",
+      "value": "Localization"
+    },
+    {
+      "key": "ui.logLevel",
+      "value": "Log level"
+    },
+    {
+      "key": "ui.logNormal",
+      "value": "Normal"
+    },
+    {
+      "key": "ui.logSection",
+      "value": "Logging"
+    },
+    {
+      "key": "ui.logSummary",
+      "value": "Summary"
+    },
+    {
+      "key": "ui.logVerbose",
+      "value": "Verbose"
+    },
+    {
+      "key": "ui.mipSection",
+      "value": "Mipmaps & Streaming"
+    },
+    {
+      "key": "ui.mipstreaming",
+      "value": "Mipmaps + MipStreaming"
+    },
+    {
+      "key": "ui.npot",
+      "value": "Experimental NPOT"
+    },
+    {
+      "key": "ui.padding",
+      "value": "Min padding"
+    },
+    {
+      "key": "ui.paramAlphaRmse",
+      "value": "Blend α RMSE"
+    },
+    {
+      "key": "ui.paramDeltaE",
+      "value": "ΔE00 mean"
+    },
+    {
+      "key": "ui.paramGrayRmse",
+      "value": "Gray RMSE"
+    },
+    {
+      "key": "ui.paramIou",
+      "value": "Cutout IoU"
+    },
+    {
+      "key": "ui.paramMsSsim",
+      "value": "MS-SSIM"
+    },
+    {
+      "key": "ui.paramNormalMean",
+      "value": "Normal angle mean"
+    },
+    {
+      "key": "ui.paramNormalP95",
+      "value": "Normal angle p95"
+    },
+    {
+      "key": "ui.platformSection",
+      "value": "Platform Overrides"
+    },
+    {
+      "key": "ui.presetCustom",
+      "value": "Custom (near lossless)"
+    },
+    {
+      "key": "ui.presetHigh",
+      "value": "High"
+    },
+    {
+      "key": "ui.presetLow",
+      "value": "Low"
+    },
+    {
+      "key": "ui.presetMedium",
+      "value": "Medium"
+    },
+    {
+      "key": "ui.presetUltra",
+      "value": "Ultra"
+    },
+    {
+      "key": "ui.qualitySection",
+      "value": "Target Quality"
+    },
+    {
+      "key": "ui.whitelist",
+      "value": "Whitelist objects"
+    },
+    {
+      "key": "ui.whitelistSection",
+      "value": "Whitelist"
+    },
+    {
+      "key": "warn.aaoEvacuationFailed",
+      "value": "No free UV channel to evacuate for {0}: renderer treated as whitelist."
+    },
+    {
+      "key": "warn.animatedMaterialSlot",
+      "value": "Material slot {0} on {1} is animated with independent materials: slot merge disabled."
+    },
+    {
+      "key": "warn.blendshapeUvUnsupported",
+      "value": "Blend shape UV deltas on {0} cannot be read; ignored (positions only)."
+    },
+    {
+      "key": "warn.densityExceeded",
+      "value": "Island {0} keeps density above max ({1} px/m): quality takes priority, consider raising max density."
+    },
+    {
+      "key": "warn.grayscaleFallback",
+      "value": "Grayscale atlas {0} contains multi-channel data: saved as {1} instead of single-channel format."
+    },
+    {
+      "key": "warn.npotFormatExcluded",
+      "value": "NPOT atlases: format {0} excluded for platform {1}."
+    },
+    {
+      "key": "warn.stAnimated",
+      "value": "Texture property {0}.{1} has animated ST transform: treated as whitelist."
+    },
+    {
+      "key": "warn.stNonIdentity",
+      "value": "Texture property {0}.{1} has non-identity ST scale/offset: treated as whitelist."
+    },
+    {
+      "key": "warn.tooLargeForAtlas",
+      "value": "UV group {0} does not fit the largest atlas ({1}px): atlas generation skipped, scaled texture kept."
+    },
+    {
+      "key": "warn.tttDetected",
+      "value": "TexTransTool detected: ATO runs after TTT (its atlases are re-processed)."
+    },
+    {
+      "key": "warn.unclassifiedShader",
+      "value": "Shader property {0}.{1} could not be classified safely: texture treated as whitelist."
+    },
+    {
+      "key": "warn.uvWrapCrossing",
+      "value": "UV islands on {0} cross wrap seams or repeat: renderer treated as whitelist."
+    },
+    {
+      "key": "warn.whitelisted",
+      "value": "Texture {0} is whitelisted (or treated as whitelisted): all optimization skipped."
+    }
+  ]
+}

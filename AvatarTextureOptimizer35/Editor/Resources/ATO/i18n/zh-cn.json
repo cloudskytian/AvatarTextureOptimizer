@@ -1,0 +1,325 @@
+{
+  "code": "zh-cn",
+  "strings": [
+    {
+      "key": "common.cancelling",
+      "value": "取消中..."
+    },
+    {
+      "key": "common.disabled",
+      "value": "禁用"
+    },
+    {
+      "key": "common.enabled",
+      "value": "启用"
+    },
+    {
+      "key": "common.unknown",
+      "value": "未知"
+    },
+    {
+      "key": "error.cancelled",
+      "value": "ATO 烘焙已被用户取消。"
+    },
+    {
+      "key": "error.internal",
+      "value": "ATO 内部错误：{0}"
+    },
+    {
+      "key": "error.multipleRoots",
+      "value": "Avatar {0} 上存在多个 AtoAvatarRoot 组件：只允许一个。烘焙已中止。"
+    },
+    {
+      "key": "error.noVrcDescriptor",
+      "value": "{0} 上的 AtoAvatarRoot 所在对象没有 VRCAvatarDescriptor：烘焙已中止。"
+    },
+    {
+      "key": "report.atlasLine",
+      "value": "[{0}] {1}：{2} 张来源贴图，{3} 个岛，{4}x{5}，利用率 {6}%，相对原贴图节省 {7}%。"
+    },
+    {
+      "key": "report.details",
+      "value": "细节（按图集）："
+    },
+    {
+      "key": "report.summary",
+      "value": "摘要：{0} 张贴图，{1} 个 UV 组，{2} 个岛，{3} 张图集。贴图体积：{4} -> {5}（{6}%）。总耗时：{7} ms。"
+    },
+    {
+      "key": "report.textureLine",
+      "value": "贴图 {0}：{1} -> {2}（{3}%），原因：{4}。"
+    },
+    {
+      "key": "report.title",
+      "value": "ATO：Avatar 贴图优化器"
+    },
+    {
+      "key": "report.warningCount",
+      "value": "{0} 条警告，{1} 条错误。"
+    },
+    {
+      "key": "stage.animations",
+      "value": "分析动画与 Animator"
+    },
+    {
+      "key": "stage.compose",
+      "value": "图集合成"
+    },
+    {
+      "key": "stage.dedupeAssets",
+      "value": "去重材质/图集并合并材质槽"
+    },
+    {
+      "key": "stage.dedupeTextures",
+      "value": "去重相同贴图"
+    },
+    {
+      "key": "stage.import",
+      "value": "应用贴图导入参数"
+    },
+    {
+      "key": "stage.islands",
+      "value": "提取 UV 岛与分组"
+    },
+    {
+      "key": "stage.meshes",
+      "value": "重写网格与 UV"
+    },
+    {
+      "key": "stage.packing",
+      "value": "装箱生成图集"
+    },
+    {
+      "key": "stage.quality",
+      "value": "计算目标质量缩放"
+    },
+    {
+      "key": "stage.references",
+      "value": "更新材质/贴图引用"
+    },
+    {
+      "key": "stage.removeSelf",
+      "value": "移除 ATO 组件"
+    },
+    {
+      "key": "stage.report",
+      "value": "生成最终报告"
+    },
+    {
+      "key": "stage.scan",
+      "value": "扫描 Avatar（渲染器/材质/贴图）"
+    },
+    {
+      "key": "ui.advanced",
+      "value": "高级选项"
+    },
+    {
+      "key": "ui.atlasSection",
+      "value": "图集"
+    },
+    {
+      "key": "ui.compression",
+      "value": "压缩"
+    },
+    {
+      "key": "ui.compressionGray",
+      "value": "灰度"
+    },
+    {
+      "key": "ui.compressionNormal",
+      "value": "法线贴图"
+    },
+    {
+      "key": "ui.compressionOpaque",
+      "value": "不透明"
+    },
+    {
+      "key": "ui.compressionTransparent",
+      "value": "透明"
+    },
+    {
+      "key": "ui.densitySection",
+      "value": "像素密度"
+    },
+    {
+      "key": "ui.enableAndroid",
+      "value": "Android 覆盖"
+    },
+    {
+      "key": "ui.enableIos",
+      "value": "iOS 覆盖"
+    },
+    {
+      "key": "ui.enablePc",
+      "value": "PC 覆盖"
+    },
+    {
+      "key": "ui.generateAtlases",
+      "value": "生成图集"
+    },
+    {
+      "key": "ui.language",
+      "value": "语言"
+    },
+    {
+      "key": "ui.languageAuto",
+      "value": "Auto（跟随 NDMF）"
+    },
+    {
+      "key": "ui.languageSection",
+      "value": "本地化"
+    },
+    {
+      "key": "ui.logLevel",
+      "value": "日志级别"
+    },
+    {
+      "key": "ui.logNormal",
+      "value": "常规"
+    },
+    {
+      "key": "ui.logSection",
+      "value": "日志"
+    },
+    {
+      "key": "ui.logSummary",
+      "value": "摘要"
+    },
+    {
+      "key": "ui.logVerbose",
+      "value": "详细"
+    },
+    {
+      "key": "ui.mipSection",
+      "value": "Mipmap 与 Streaming"
+    },
+    {
+      "key": "ui.mipstreaming",
+      "value": "Mipmap + MipStreaming"
+    },
+    {
+      "key": "ui.npot",
+      "value": "实验性 NPOT"
+    },
+    {
+      "key": "ui.padding",
+      "value": "最小 padding"
+    },
+    {
+      "key": "ui.paramAlphaRmse",
+      "value": "Blend α RMSE"
+    },
+    {
+      "key": "ui.paramDeltaE",
+      "value": "ΔE00 均值"
+    },
+    {
+      "key": "ui.paramGrayRmse",
+      "value": "灰度 RMSE"
+    },
+    {
+      "key": "ui.paramIou",
+      "value": "Cutout 轮廓 IoU"
+    },
+    {
+      "key": "ui.paramMsSsim",
+      "value": "MS-SSIM"
+    },
+    {
+      "key": "ui.paramNormalMean",
+      "value": "法线角度均值"
+    },
+    {
+      "key": "ui.paramNormalP95",
+      "value": "法线角度 p95"
+    },
+    {
+      "key": "ui.platformSection",
+      "value": "平台覆盖"
+    },
+    {
+      "key": "ui.presetCustom",
+      "value": "自定义（近无损）"
+    },
+    {
+      "key": "ui.presetHigh",
+      "value": "高"
+    },
+    {
+      "key": "ui.presetLow",
+      "value": "低"
+    },
+    {
+      "key": "ui.presetMedium",
+      "value": "中"
+    },
+    {
+      "key": "ui.presetUltra",
+      "value": "极高"
+    },
+    {
+      "key": "ui.qualitySection",
+      "value": "目标质量"
+    },
+    {
+      "key": "ui.whitelist",
+      "value": "白名单对象"
+    },
+    {
+      "key": "ui.whitelistSection",
+      "value": "白名单"
+    },
+    {
+      "key": "warn.aaoEvacuationFailed",
+      "value": "{0} 无可用疏散 UV 通道：渲染器视作白名单处理。"
+    },
+    {
+      "key": "warn.animatedMaterialSlot",
+      "value": "{1} 的材质槽 {0} 被动画独立切换：禁用该槽合并。"
+    },
+    {
+      "key": "warn.blendshapeUvUnsupported",
+      "value": "{0} 的形态键 UV 增量无法读取；已忽略（仅处理顶点位置）。"
+    },
+    {
+      "key": "warn.densityExceeded",
+      "value": "岛 {0} 的密度仍高于上限（{1} px/m）：质量优先，可考虑提高密度上限。"
+    },
+    {
+      "key": "warn.grayscaleFallback",
+      "value": "灰度图集 {0} 含多通道数据：以 {1} 保存（非单通道格式）。"
+    },
+    {
+      "key": "warn.npotFormatExcluded",
+      "value": "NPOT 图集：平台 {1} 不支持格式 {0}，已剔除。"
+    },
+    {
+      "key": "warn.stAnimated",
+      "value": "贴图属性 {0}.{1} 存在动画 ST 变换：视作白名单处理。"
+    },
+    {
+      "key": "warn.stNonIdentity",
+      "value": "贴图属性 {0}.{1} 的 ST 缩放/平移非默认值：视作白名单处理。"
+    },
+    {
+      "key": "warn.tooLargeForAtlas",
+      "value": "UV 组 {0} 无法装入最大图集（{1}px）：跳过图集化，保留缩放后的整图。"
+    },
+    {
+      "key": "warn.tttDetected",
+      "value": "检测到 TexTransTool：ATO 将在 TTT 之后运行（会对其图集再处理）。"
+    },
+    {
+      "key": "warn.unclassifiedShader",
+      "value": "着色器属性 {0}.{1} 无法安全分类：贴图视作白名单处理。"
+    },
+    {
+      "key": "warn.uvWrapCrossing",
+      "value": "{0} 的 UV 岛跨 wrap 缝或依赖 repeat：渲染器视作白名单处理。"
+    },
+    {
+      "key": "warn.whitelisted",
+      "value": "贴图 {0} 处于白名单（或被视作白名单）：跳过所有优化。"
+    }
+  ]
+}
