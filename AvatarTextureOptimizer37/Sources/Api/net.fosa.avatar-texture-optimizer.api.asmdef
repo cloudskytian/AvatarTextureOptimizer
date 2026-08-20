@@ -1,0 +1,18 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.api",
+    "rootNamespace": "net.fosa.AvatarTextureOptimizer.Api",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

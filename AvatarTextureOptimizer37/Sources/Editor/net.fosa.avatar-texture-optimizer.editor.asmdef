@@ -1,0 +1,33 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.editor",
+    "rootNamespace": "net.fosa.AvatarTextureOptimizer.Editor",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.runtime",
+        "net.fosa.avatar-texture-optimizer.api",
+        "nadena.dev.ndmf",
+        "nadena.dev.ndmf.runtime",
+        "Unity.Burst",
+        "Unity.Mathematics",
+        "VRC.SDKBase",
+        "VRC.SDK3A"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.collections",
+            "expression": "2.0.0",
+            "define": "ATO_UNITY_COLLECTIONS"
+        }
+    ],
+    "noEngineReferences": false
+}

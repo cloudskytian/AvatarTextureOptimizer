@@ -1,0 +1,11 @@
+// Quality helper kernels (batch SSIM / ΔE scaffolding).
+// 质量评估辅助 kernel（批量 SSIM / ΔE 脚手架）。
+// CPU Burst path is always used as source of truth if dispatch fails.
+// 若 GPU dispatch 失败，以 CPU Burst 路径为准。
+#pragma kernel KDummy
+
+[numthreads(8,8,1)]
+void KDummy(uint3 id : SV_DispatchThreadID)
+{
+    // Placeholder kept so the asset imports on all GPUs. / 占位，保证各 GPU 可导入。
+}
