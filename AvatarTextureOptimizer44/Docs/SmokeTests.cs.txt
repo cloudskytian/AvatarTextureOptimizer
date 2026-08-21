@@ -1,0 +1,88 @@
+// Pure-logic smoke tests against real package code + inert stubs / 对真实包代码的纯逻辑冒烟测试
+using System;
+using System.Linq;
+using Fosa.ATO.Editor.Atlas;
+using Fosa.ATO.Editor.Quality;
+using Fosa.ATO.Editor.Localization;
+using Fosa.ATO.Runtime;
+
+static class TestMain
+{
+    static int failures = 0;
+    static void Check(bool ok, string name)
+    {
+        if (!ok) { failures++; Console.WriteLine("FAIL: " + name); }
+        else Console.WriteLine("pass: " + name);
+    }
+
+    static int Main()
+    {
+        // ---- Mask bit ops & transpose / 位操作与转置 ----
+        var m = new IslandRasterizer.Mask { Cols = 100, Rows = 10, Words = 2, Bits = new ulong[20], CellCount = 0 };
+        m.Set(0, 0); m.Set(99, 9); m.Set(64, 5); // cross the 64-bit word boundary / 跨64位字边界
+        Check(m.Get(0, 0) && m.Get(99, 9) && m.Get(64, 5) && !m.Get(1, 0), "Mask set/get incl. word boundary");
+        var t = m.Transposed();
+        Check(t.Cols == 10 && t.Rows == 100 && t.Words == 1 && t.Get(9, 99) && t.Get(5, 64), "Mask transpose");
+
+        // ---- Candidate ordering: area asc then squareness / 候选排序：面积升序，越方越优先 ----
+        var cands = AtlasPacker.Candidates(512, false, 64 * 64 * 4).ToList();
+        var first = cands[0];
+        bool areaOK = true;
+        for (int i = 1; i < cands.Count; i++)
+            if ((long)cands[i].w * cands[i].h < (long)cands[i - 1].w * cands[i - 1].h) areaOK = false;
+        bool squarePref = (long)first.w * first.h == 128 * 256 ? (first.w == 128 || first.h == 128) : true;
+        Check(areaOK && cands.All(c => c.w >= 64 && c.h >= 64 && c.w <= 512 && c.h <= 512), "Candidates filtered & area-sorted");
+        Check(cands.Count(c => c.w * c.h == cands[0].w * cands[0].h) > 0, "Candidates exist");
+        // equal-area squareness ordering / 等面积时更方优先
+        var eq = cands.Where(c => c.w * c.h == cands[0].w * cands[0].h).ToList();
+        bool sq = true;
+        for (int i = 1; i < eq.Count; i++)
+            if (Math.Max(eq[i].w, eq[i].h) / (double)Math.Min(eq[i].w, eq[i].h) < Math.Max(eq[i - 1].w, eq[i - 1].h) / (double)Math.Min(eq[i - 1].w, eq[i - 1].h)) sq = false;
+        Check(sq, "Candidates squareness ordering");
+
+        // ---- Metrics partial merge / 指标分片合并 ----
+        const int F = 73;
+        var d = new float[F];
+        d[0] = 0.9f; d[1] = 1f;         // ssim, cnt
+        d[2] = 1.5f; d[3] = 0.5f;       // dE sum, weight
+        d[4] = 0.0004f;                  // alpha sq err
+        d[5] = 8f; d[6] = 9f; d[7] = 7f; // iouA, iouB, iouAB
+        d[12] = 2f; d[13] = 4f;          // normal sum, count
+        d[13 + 5] = 0.2f;                // dE hist bin5
+        d[37 + 3] = 0.3f;                // normal hist bin3
+        var r = GPUTexOps.MergePartials(d, 1);
+        Check(Math.Abs(r.ssim - 0.9f) < 1e-4, "Merge ssim");
+        Check(Math.Abs(r.dEMean - 3.0f) < 1e-4, "Merge dEMean");
+        Check(Math.Abs(r.alphaRmse - 0.02f) < 1e-3, "Merge alphaRmse");
+        Check(Math.Abs(r.alphaIou - 7f / 10f) < 1e-4, "Merge alphaIoU");
+        Check(Math.Abs(r.nMeanDeg - 0.5f) < 1e-4, "Merge normal mean");
+
+        // ---- Rotation mapping consistency / 旋转映射一致性 ----
+        var l = new UnityEngine.Vector2(0.25f, 0.75f);
+        var a = AtlasPacker.RotatedUV(l, true);
+        Check(Math.Abs(a.x - (1f - l.y)) < 1e-6 && Math.Abs(a.y - l.x) < 1e-6, "RotatedUV");
+
+        // ---- i18n flat JSON parser / 扁平JSON解析 ----
+        var tbl = ATOI18n.ParseJsonFlat("{ \"a\": \"hello\", \"b\": \"wo\\\"rld\", \"c\": \"line\\nbreak\" }");
+        Check(tbl.Count == 3 && tbl["a"] == "hello" && tbl["b"] == "wo\"rld" && tbl["c"] == "line\nbreak", "i18n JSON parse");
+
+        // ---- Quality params presets / 质量挡位 ----
+        var nearLossless = ATOQualityParams.ForPreset(ATOQualityPreset.NearLossless);
+        var high = ATOQualityParams.ForPreset(ATOQualityPreset.High);
+        var med = ATOQualityParams.ForPreset(ATOQualityPreset.Medium);
+        Check(nearLossless.msSsimMin >= high.msSsimMin && high.msSsimMin >= med.msSsimMin, "Preset monotonic ssim");
+        Check(high.deltaEMeanMax <= med.deltaEMeanMax, "Preset monotonic dE");
+
+        Console.WriteLine(failures == 0 ? "ALL TESTS PASSED" : failures + " FAILURES");
+        return failures == 0 ? 0 : 1;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// NOTE / 说明:
+// These smoke tests run OUTSIDE Unity against faithful API stubs
+// (dotnet 8, C# 9, netstandard2.1-equivalent). They verify pure logic only.
+// Verified: Mask bit ops/transpose, candidate-pool ordering, metric partial
+// merge, rotation mapping, i18n JSON parsing, preset monotonicity.
+// 这些冒烟测试在 Unity 之外以忠实API桩运行（dotnet 8 / C#9），仅验证纯逻辑：
+// 掩码位运算与转置、候选池排序、指标分片合并、旋转映射、i18n解析、挡位单调性。

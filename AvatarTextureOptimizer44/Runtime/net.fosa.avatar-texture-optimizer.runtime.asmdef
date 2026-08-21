@@ -1,0 +1,26 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.runtime",
+    "rootNamespace": "Fosa.ATO.Runtime",
+    "references": [
+        "Unity.Mathematics",
+        "nadena.dev.ndmf.runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "VRCSDKBase.dll",
+        "VRCSDK3A.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "ATO_VRCSDK3A"
+        }
+    ],
+    "noEngineReferences": false
+}

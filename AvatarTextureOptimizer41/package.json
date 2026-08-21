@@ -1,0 +1,31 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "displayName": "AvatarTextureOptimizer",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "description": "ATO (AvatarTextureOptimizer): an open-source NDMF tool for VRChat avatars. It analyzes avatar meshes, builds UV-to-texture mappings, shrinks UV islands to target quality, re-packs islands into one or more atlases, and applies safe import-settings optimization — to maximize texture utilization while preserving appearance.\n\nATO（AvatarTextureOptimizer）：开源的 VRChat Avatar NDMF 工具。分析 Avatar 网格，建立网格 UV 到贴图的映射，按目标质量算法缩小 UV 岛，将 UV 岛重新打包进一个或多个图集，并做安全的导入参数优化——在保证观感一致的前提下最大化贴图利用率。",
+  "keywords": [
+    "vrchat",
+    "avatar",
+    "texture",
+    "atlas",
+    "ndmf",
+    "optimization"
+  ],
+  "author": {
+    "name": "fosa",
+    "url": "https://github.com/fosa"
+  },
+  "vpmDependencies": {
+    "nadena.dev.ndmf": "1.14.4",
+    "com.vrchat.avatars": "3.10.4",
+    "com.vrchat.base": "3.10.4"
+  },
+  "dependencies": {
+    "com.unity.collections": "2.1.4",
+    "com.unity.mathematics": "1.2.6",
+    "com.unity.burst": "1.8.9",
+    "com.unity.modules.animation": "1.0.0",
+    "com.unity.modules.imageconversion": "1.0.0"
+  }
+}

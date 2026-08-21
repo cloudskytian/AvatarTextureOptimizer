@@ -1,0 +1,17 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "displayName": "Avatar Texture Optimizer",
+  "version": "0.1.0-dev.1",
+  "unity": "2022.3",
+  "description": "Open-source NDMF-based VRChat avatar texture optimization tool. Current milestone focuses on pipeline, safety validation, analysis, logging, localization, and build-safe fallback scaffolding.",
+  "keywords": [
+    "vrchat",
+    "avatar",
+    "texture",
+    "optimizer",
+    "ndmf"
+  ],
+  "author": {
+    "name": "FOSA"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer",
+  "displayName": "Avatar Texture Optimizer (ATO)",
+  "version": "0.1.0-alpha.2",
+  "unity": "2022.3",
+  "description": "World-class VRChat avatar texture optimizer built on NDMF: quality-driven (MS-SSIM + CIEDE2000 + alpha + normal angle) UV island scaling, texel-density aware, with Burst/GPU-accelerated atlas packing, texture-type-group atlasing, animation-aware reference remapping, and full i18n.",
+  "documentationUrl": "https://github.com/fosa/AvatarTextureOptimizer",
+  "changelogUrl": "https://github.com/fosa/AvatarTextureOptimizer/blob/main/CHANGELOG.md",
+  "license": "MIT",
+  "author": {
+    "name": "fosa",
+    "email": "fosa@example.com",
+    "url": "https://github.com/fosa"
+  },
+  "dependencies": {
+    "com.unity.burst": "1.8.4"
+  },
+  "vpmDependencies": {
+    "com.vrchat.avatars": ">=3.10.4 <4.0.0",
+    "nadena.dev.ndmf": ">=1.14.4 <2.0.0"
+  },
+  "keywords": [
+    "vrchat",
+    "texture",
+    "atlas",
+    "optimizer",
+    "ndmf",
+    "avatar"
+  ]
+}

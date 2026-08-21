@@ -1,0 +1,23 @@
+{
+    "name": "net.fosa.ato.editor",
+    "rootNamespace": "net.fosa.ato",
+    "references": [
+        "net.fosa.ato.runtime",
+        "nadena.dev.ndmf",
+        "VRC.SDK3A",
+        "VRC.SDKBase",
+        "VRC.SDK3A.Editor",
+        "VRC.SDKBase.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

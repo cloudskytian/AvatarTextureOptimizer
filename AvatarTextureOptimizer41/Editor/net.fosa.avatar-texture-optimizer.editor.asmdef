@@ -1,0 +1,41 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.editor",
+    "rootNamespace": "Net.Fosa.AvatarTextureOptimizer",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.runtime",
+        "nadena.dev.ndmf",
+        "VRC.SDK3A",
+        "VRC.SDKBase",
+        "Unity.Burst",
+        "Unity.Mathematics",
+        "Unity.Collections",
+        "Unity.Jobs"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.vrchat.avatars",
+            "expression": "",
+            "define": "ATO_VRCSDK3_AVATARS"
+        },
+        {
+            "name": "com.unity.burst",
+            "expression": "1.6.0",
+            "define": "ATO_BURST_AVAILABLE"
+        },
+        {
+            "name": "com.unity.collections",
+            "expression": "1.0.0",
+            "define": "ATO_COLLECTIONS_AVAILABLE"
+        }
+    ],
+    "noEngineReferences": false
+}

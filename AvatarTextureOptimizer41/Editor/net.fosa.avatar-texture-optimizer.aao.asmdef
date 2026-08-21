@@ -1,0 +1,29 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.aao",
+    "rootNamespace": "Net.Fosa.AvatarTextureOptimizer",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.editor",
+        "net.fosa.avatar-texture-optimizer.runtime",
+        "com.anatawa12.avatar-optimizer.api.editor",
+        "VRC.SDK3A"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "ATO_AAO_API_AVAILABLE"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.anatawa12.avatar-optimizer",
+            "expression": "1.8.0",
+            "define": "ATO_AAO_API_AVAILABLE"
+        }
+    ],
+    "noEngineReferences": false
+}

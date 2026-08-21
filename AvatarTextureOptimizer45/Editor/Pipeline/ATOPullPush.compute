@@ -1,0 +1,117 @@
+// ============================================================================
+// ATO GPU pull-push 岛边缘颜色外扩 / ATO GPU pull-push island-edge color dilation.
+// 4px 格粒度多源 BFS 的 GPU 等价实现: 跳跃洪泛 (Jump Flooding Algorithm, JFA).
+// GPU equivalent of the multi-source BFS at 4px cells: Jump Flooding Algorithm.
+// 每个格子记录 (最近种子格坐标, 种子颜色); log2(边长) 轮 8 邻域采样取最近.
+// Each cell stores (nearest seed coords, seed color); log2(side) rounds of 8-neighbor sampling.
+// 透明图集: 填充颜色 alpha 保持 0 / transparent atlases: fill alpha stays 0.
+// ============================================================================
+
+#pragma kernel ATOSeed
+#pragma kernel ATOJFA
+#pragma kernel ATOSync
+#pragma kernel ATOFinalize
+
+RWTexture2D<float4> _Atlas;   // 图集输出 / atlas output (RGBA32, alpha ignored when transparent)
+RWTexture2D<uint4> _State;    // xy=种子格坐标(0xFFFF=无), z=种子像素颜色(打包RGBA32), w=深度 / xy=seed cell coords, z=packed color, w=depth
+RWTexture2D<float4> _Ping;
+RWTexture2D<float4> _Pong;
+int _W, _H;          // 图集尺寸(px) / atlas size in px
+int _CW, _CH;        // 格子数(4px) / cell count
+int _Transparent;    // 1=透明图集(alpha保持0) / transparent atlas (fill alpha=0)
+int _UsePing;        // 当前步进尺寸 / current step size
+int _PassIdx;        // 洪泛轮次 / flooding round
+
+// 种子: 格内任一点非空(写入过岛)则以该格为种子 / seed: any non-empty pixel inside the cell seeds it
+[numthreads(8, 8, 1)]
+void ATOSeed(uint3 id : SV_DispatchThreadID)
+{
+    uint cx = id.x, cy = id.y;
+    if (cx >= (uint)_CW || cy >= (uint)_CH) return;
+    uint4 st = uint4(0xFFFF, 0xFFFF, 0, 0xFFFFFFFF);
+    for (int y = 0; y < 4; y++)
+    {
+        for (int x = 0; x < 4; x++)
+        {
+            uint px = cx * 4 + x, py = cy * 4 + y;
+            if (px >= (uint)_W || py >= (uint)_H) continue;
+            float4 c = _Atlas[uint2(px, py)];
+            if (c.a > 0.0f || c.r > 0.0f || c.g > 0.0f || c.b > 0.0f)
+            {
+                st.xy = uint2(cx, cy);
+                st.z = (uint(c.a * 255.0f) << 24) | (uint(c.r * 255.0f) << 16) | (uint(c.g * 255.0f) << 8) | uint(c.b * 255.0f);
+                st.w = 0;
+                _State[uint2(cx, cy)] = st;
+                return;
+            }
+        }
+    }
+
+    _State[uint2(cx, cy)] = st;
+}
+
+[numthreads(8, 8, 1)]
+void ATOJFA(uint3 id : SV_DispatchThreadID)
+{
+    uint cx = id.x, cy = id.y;
+    if (cx >= (uint)_CW || cy >= (uint)_CH) return;
+    uint4 cur = _State[uint2(cx, cy)];
+    uint bestD = cur.w;
+    uint4 best = cur;
+    int step = _UsePing;
+    int stp = step;
+
+    // 8 邻域(网格) / 8 grid neighbors
+    for (int dy = -1; dy <= 1; dy++)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            if (dx == 0 && dy == 0) continue;
+            int nx = (int)cx + dx * stp, ny = (int)cy + dy * stp;
+            if (nx < 0 || ny < 0 || nx >= _CW || ny >= _CH) continue;
+            uint4 nb = _State[uint2((uint)nx, (uint)ny)];
+            if (nb.x == 0xFFFF) continue;
+            uint d = nb.w + (uint)stp;
+            if (d < bestD)
+            {
+                bestD = d;
+                best = nb;
+                best.w = d;
+            }
+        }
+    }
+
+    _Pong[uint2(cx, cy)] = asfloat(best);
+}
+
+// 同步(读回) / sync: copy pong back into state
+[numthreads(8, 8, 1)]
+void ATOSync(uint3 id : SV_DispatchThreadID)
+{
+    uint cx = id.x, cy = id.y;
+    if (cx >= (uint)_CW || cy >= (uint)_CH) return;
+    _State[uint2(cx, cy)] = asuint(_Pong[uint2(cx, cy)]);
+}
+
+// 最终写回 / finalize: write the nearest seed color into empty pixels
+[numthreads(8, 8, 1)]
+void ATOFinalize(uint3 id : SV_DispatchThreadID)
+{
+    uint cx = id.x, cy = id.y;
+    if (cx >= (uint)_CW || cy >= (uint)_CH) return;
+    uint4 st = _State[uint2(cx, cy)];
+    if (st.x == 0xFFFF) return; // 全空图集 / empty atlas
+    uint r = (st.z >> 16) & 0xFF, g = (st.z >> 8) & 0xFF, b = st.z & 0xFF;
+    float alpha = _Transparent ? 0.0 : 1.0;
+    for (int y = 0; y < 4; y++)
+    {
+        for (int x = 0; x < 4; x++)
+        {
+            uint px = cx * 4 + x, py = cy * 4 + y;
+            if (px >= (uint)_W || py >= (uint)_H) continue;
+            float4 c = _Atlas[uint2(px, py)];
+            if (c.a > 0.0f || c.r > 0.0f || c.g > 0.0f || c.b > 0.0f) continue;
+            _Atlas[uint2(px, py)] = float4(r / 255.0, g / 255.0, b / 255.0, alpha);
+        }
+    }
+}

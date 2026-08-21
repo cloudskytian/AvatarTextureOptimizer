@@ -1,0 +1,70 @@
+// ATOPullPush.compute - GPU pull-push dilation: fills empty atlas space with edge colors (infinite bleed).
+// GPU pull-push 外扩：以边缘颜色填充图集空白（无限外扩）。
+// RGB carried premultiplied by coverage weight; alpha of truly-empty pixels stays 0 for transparent atlases.
+// RGB 以覆盖率权重预乘搬运；透明图集的真空像素alpha保持0。
+#pragma kernel PullDown
+#pragma kernel PushUp
+#pragma kernel ClearAlpha
+
+Texture2D<float4> _Src;
+RWTexture2D<float4> _Dst;
+
+cbuffer ATOPP : register(b0)
+{
+    uint2 _DstSize;
+    uint _RowWords;   // unused / 未用
+    uint _KeepAlpha;  // 1 = output alpha = coverage / 输出alpha=覆盖率
+};
+
+// weighted (premultiplied) half downsample / 预乘加权半尺寸下采样
+[numthreads(8, 8, 1)]
+void PullDown(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _DstSize.x || id.y >= _DstSize.y) return;
+    uint2 s = id.xy * 2;
+    float4 a = _Src.Load(uint3(s.x, s.y, 0));
+    float4 b = _Src.Load(uint3(s.x + 1, s.y, 0));
+    float4 c = _Src.Load(uint3(s.x, s.y + 1, 0));
+    float4 d = _Src.Load(uint3(s.x + 1, s.y + 1, 0));
+    // treat negative rgb as valid colors with weight alpha / 以alpha为权重
+    float wa = a.a, wb = b.a, wc = c.a, wd = d.a;
+    // clamp weights away from zero to keep colors / 权重下限保护颜色
+    float4 sum = a * wa + b * wb + c * wc + d * wd;
+    float w = (wa + wb + wc + wd);
+    _Dst[id.xy] = w > 1e-6 ? float4(sum.rgb / w, w / 4.0) : 0;
+}
+
+// fill holes from the coarser level / 用粗层填补本层空洞
+Texture2D<float4> _Coarse;
+RWTexture2D<float4> _Fine;
+
+cbuffer ATOPP2 : register(b1)
+{
+    uint2 _FineSize;
+}
+
+[numthreads(8, 8, 1)]
+void PushUp(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _FineSize.x || id.y >= _FineSize.y) return;
+    float4 f = _Fine.Load(uint3(id.xy, 0));
+    if (f.a > 1e-6) { _Fine[id.xy] = f; return; } // already covered / 已覆盖
+    uint2 c = id.xy / 2;
+    float4 up = _Coarse.Load(uint3(c, 0));
+    if (up.a > 1e-6) _Fine[id.xy] = float4(up.rgb, 0); // color only, coverage stays 0 / 仅填色，覆盖率保持0
+}
+
+// force alpha zero where original coverage was zero (transparent atlases) / 透明图集：原覆盖为0处强制alpha=0
+Texture2D<float4> _Orig;
+RWTexture2D<float4> _Target;
+
+[numthreads(8, 8, 1)]
+void ClearAlpha(uint3 id : SV_DispatchThreadID)
+{
+    uint2 sz;
+    _Target.GetDimensions(sz.x, sz.y);
+    if (id.x >= sz.x || id.y >= sz.y) return;
+    float4 t = _Target[id.xy];
+    float4 o = _Orig.Load(uint3(id.xy, 0));
+    if (o.a <= 1e-6) _Target[id.xy] = float4(t.rgb, 0);
+}

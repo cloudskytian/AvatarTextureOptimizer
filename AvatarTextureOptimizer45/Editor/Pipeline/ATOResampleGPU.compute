@@ -1,0 +1,104 @@
+// ============================================================================
+// ATO GPU 全分辨率重采样 / ATO GPU full-resolution resampling (compute shader).
+// 预乘线性空间下采样 + 上采样回原尺寸; 指标计算由 Burst 行并行作业完成(确定性).
+// Premultiplied-linear downsampling + upsampling back to the original size;
+// metric evaluation is done by deterministic row-parallel Burst jobs.
+// ============================================================================
+
+#pragma kernel ATOBilinear
+
+RWTexture2D<float4> _Src;       // 预乘线性RGBA / premultiplied linear RGBA
+RWTexture2D<float> _SrcAlpha;
+RWTexture2D<float3> _SrcNormal; // 解码法线(可选) / decoded normals (optional)
+
+RWTexture2D<float4> _Dst;       // 下采样结果 / downsampled
+RWTexture2D<float> _DstAlpha;
+RWTexture2D<float3> _DstNormal;
+
+RWTexture2D<float4> _Up;        // 上采样回原尺寸 / upsampled back to the original size
+RWTexture2D<float> _UpAlpha;
+RWTexture2D<float3> _UpNormal;
+
+float4 _Params;   // x=srcW, y=srcH, z=dstW, w=dstH
+int _HasNormal;   // 0/1
+int _Pass;        // 0=down, 1=up
+
+// 线程 = 目标像素 / thread = destination pixel
+[numthreads(8, 8, 1)]
+void ATOBilinear(uint3 id : SV_DispatchThreadID)
+{
+    if (_Pass == 0)
+    {
+        // 下采样 / downsample
+        uint dx = id.x, dy = id.y;
+        uint dw = (uint)_Params.z, dh = (uint)_Params.w;
+        if (dx >= dw || dy >= dh) return;
+
+        float rx = _Params.x / dw, ry = _Params.y / dh;
+        float fx = (dx + 0.5f) * rx - 0.5f;
+        float fy = (dy + 0.5f) * ry - 0.5f;
+        float tx = frac(fx), ty = frac(fy);
+        uint x0 = (uint)clamp((int)floor(fx), 0, (int)_Params.x - 1);
+        uint y0 = (uint)clamp((int)floor(fy), 0, (int)_Params.y - 1);
+        uint x1 = min(x0 + 1, (uint)_Params.x - 1);
+        uint y1 = min(y0 + 1, (uint)_Params.y - 1);
+
+        float4 v00 = _Src[uint2(x0, y0)];
+        float4 v10 = _Src[uint2(x1, y0)];
+        float4 v01 = _Src[uint2(x0, y1)];
+        float4 v11 = _Src[uint2(x1, y1)];
+        _Dst[uint2(dx, dy)] = lerp(lerp(v00, v10, tx), lerp(v01, v11, tx), ty);
+
+        float a00 = _SrcAlpha[uint2(x0, y0)];
+        float a10 = _SrcAlpha[uint2(x1, y0)];
+        float a01 = _SrcAlpha[uint2(x0, y1)];
+        float a11 = _SrcAlpha[uint2(x1, y1)];
+        _DstAlpha[uint2(dx, dy)] = lerp(lerp(a00, a10, tx), lerp(a01, a11, tx), ty);
+
+        if (_HasNormal)
+        {
+            float3 n00 = _SrcNormal[uint2(x0, y0)];
+            float3 n10 = _SrcNormal[uint2(x1, y0)];
+            float3 n01 = _SrcNormal[uint2(x0, y1)];
+            float3 n11 = _SrcNormal[uint2(x1, y1)];
+            _DstNormal[uint2(dx, dy)] = normalize(lerp(lerp(n00, n10, tx), lerp(n01, n11, tx), ty));
+        }
+    }
+    else
+    {
+        // 上采样回原尺寸 / upsample back to the original size
+        uint dx = id.x, dy = id.y;
+        if (dx >= (uint)_Params.x || dy >= (uint)_Params.y) return;
+
+        uint dw = (uint)_Params.z, dh = (uint)_Params.w;
+        float rx = dw / _Params.x, ry = dh / _Params.y;
+        float fx = (dx + 0.5f) * rx - 0.5f;
+        float fy = (dy + 0.5f) * ry - 0.5f;
+        float tx = frac(fx), ty = frac(fy);
+        uint x0 = (uint)clamp((int)floor(fx), 0, (int)dw - 1);
+        uint y0 = (uint)clamp((int)floor(fy), 0, (int)dh - 1);
+        uint x1 = min(x0 + 1, dw - 1);
+        uint y1 = min(y0 + 1, dh - 1);
+
+        float4 v00 = _Dst[uint2(x0, y0)];
+        float4 v10 = _Dst[uint2(x1, y0)];
+        float4 v01 = _Dst[uint2(x0, y1)];
+        float4 v11 = _Dst[uint2(x1, y1)];
+        _Up[uint2(dx, dy)] = lerp(lerp(v00, v10, tx), lerp(v01, v11, tx), ty);
+
+        float a00 = _DstAlpha[uint2(x0, y0)];
+        float a10 = _DstAlpha[uint2(x1, y0)];
+        float a01 = _DstAlpha[uint2(x0, y1)];
+        float a11 = _DstAlpha[uint2(x1, y1)];
+        _UpAlpha[uint2(dx, dy)] = lerp(lerp(a00, a10, tx), lerp(a01, a11, tx), ty);
+
+        if (_HasNormal)
+        {
+            float3 n00 = _DstNormal[uint2(x0, y0)];
+            float3 n10 = _DstNormal[uint2(x1, y0)];
+            float3 n01 = _DstNormal[uint2(x0, y1)];
+            float3 n11 = _DstNormal[uint2(x1, y1)];
+            _UpNormal[uint2(dx, dy)] = normalize(lerp(lerp(n00, n10, tx), lerp(n01, n11, tx), ty));
+        }
+    }
+}

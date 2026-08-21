@@ -1,0 +1,318 @@
+// ATOQuality.compute - GPU quality metrics & resampling for island evaluation.
+// GPU 质量指标与岛评估重采样。
+// Numeric bases / 数值依据:
+//  - SSIM/MS-SSIM: Wang, Simoncelli & Bovik 2003/2004 (11x11 gaussian, sigma 1.5, K1=.01 K2=.03,
+//    weights .0448 .2856 .3001 .2363 .1333, 5 scales)
+//  - CIEDE2000: Sharma, Wu & Dalal 2005 reference implementation
+//  - Normal maps: angular error statistics / 法线角度误差统计
+// All color math in LINEAR space; transparent textures downsample PREMULTIPLIED.
+// 全部颜色运算在线性空间；透明贴图下采样使用预乘alpha。
+#pragma kernel Downsample
+#pragma kernel PyrDown
+#pragma kernel Upsample
+#pragma kernel ReduceMetrics
+#pragma kernel ScanTexture
+
+#define PI 3.14159265358979
+
+// ------------------------------------------------------------------
+// CBuffers
+// ------------------------------------------------------------------
+cbuffer ATOParms : register(b0)
+{
+    float4 _SrcRect;      // x,y,w,h of source region in PIXELS / 源区域像素矩形
+    float4 _SrcTexSize;   // full source texture size / 源贴图完整尺寸
+    float2 _DstSize;      // destination size / 目标尺寸
+    float _Mode;          // 0 color, 1 normal / 颜色、法线
+    float _Premultiply;   // 1 = premultiply before averaging / 平均前预乘
+};
+
+Texture2D<float4> _Src;
+SamplerState sampler_Src;            // linear clamp / 线性钳制
+RWTexture2D<float4> _Dst;
+
+float3 SrgbToLinear(float3 c) { return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4); }
+float3 NrmDecode(float3 c) { return c.xyz * 2.0 - 1.0; }
+float3 NrmEncode(float3 n) { return n * 0.5 + 0.5; }
+
+// ------------------------------------------------------------------
+// Downsample: dst = box average of the src rect mapped over dst pixels.
+// 下采样：源矩形按目标像素做盒式平均。4x4 superset taps for quality. 4x4超采样保证质量。
+// ------------------------------------------------------------------
+[numthreads(8, 8, 1)]
+void Downsample(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_DstSize.x || id.y >= (uint)_DstSize.y) return;
+    float4 acc = 0;
+    [unroll]
+    for (int ty = 0; ty < 4; ty++)
+    {
+        [unroll]
+        for (int tx = 0; tx < 4; tx++)
+        {
+            float2 frac2 = (id.xy + float2(tx, ty) * 0.25 + 0.125) / _DstSize; // 4x4 subpixels / 子像素
+            float2 px = _SrcRect.xy + frac2 * _SrcRect.zw;                     // src pixel coords / 源像素坐标
+            float2 uv = (px + 0.5) / _SrcTexSize.xy;
+            float4 s = _Src.SampleLevel(sampler_Src, uv, 0);
+            if (_Premultiply > 0.5) s.rgb *= s.a;
+            if (_Mode > 0.5) s = float4(NrmDecode(s.rgb), s.a);
+            acc += s;
+        }
+    }
+    acc /= 16.0;
+    if (_Mode > 0.5)
+    {
+        float3 n = normalize(acc.rgb); // average of decoded normals, renormalized / 解码后平均再归一化
+        _Dst[id.xy] = float4(NrmEncode(n), acc.a);
+    }
+    else
+    {
+        _Dst[id.xy] = acc;
+    }
+}
+
+// ------------------------------------------------------------------
+// PyrDown: half-size plain downsample (MS-SSIM pyramid)
+// ------------------------------------------------------------------
+Texture2D<float4> _PyrSrc;
+RWTexture2D<float4> _PyrDst;
+
+[numthreads(8, 8, 1)]
+void PyrDown(uint3 id : SV_DispatchThreadID)
+{
+    uint2 sz;
+    _PyrDst.GetDimensions(sz.x, sz.y);
+    if (id.x >= sz.x || id.y >= sz.y) return;
+    uint2 s = id.xy * 2;
+    float4 a = _PyrSrc.Load(uint3(s.x, s.y, 0));
+    float4 b = _PyrSrc.Load(uint3(s.x + 1, s.y, 0));
+    float4 c = _PyrSrc.Load(uint3(s.x, s.y + 1, 0));
+    float4 d = _PyrSrc.Load(uint3(s.x + 1, s.y + 1, 0));
+    _PyrDst[id.xy] = (a + b + c + d) * 0.25;
+}
+
+// ------------------------------------------------------------------
+// Upsample: bilinear upscale of a premult result back onto the original rect
+// ------------------------------------------------------------------
+Texture2D<float4> _UpSrc;
+SamplerState sampler_UpSrc;
+RWTexture2D<float4> _UpDst;
+
+[numthreads(8, 8, 1)]
+void Upsample(uint3 id : SV_DispatchThreadID)
+{
+    uint2 sz;
+    _UpDst.GetDimensions(sz.x, sz.y);
+    if (id.x >= sz.x || id.y >= sz.y) return;
+    // dst rect origin offset / 目标矩形偏移
+    float2 origin = _SrcRect.xy;
+    float2 rel = (id.xy + 0.5) / _SrcRect.zw; // position inside rect / 矩形内位置
+    float2 uv = rel;
+    uint2 dst = uint2(origin) + id.xy;
+    if (dst.x >= sz.x || dst.y >= sz.y) return;
+    float4 v = _UpSrc.SampleLevel(sampler_UpSrc, uv, 0);
+    if (_Mode > 0.5) { float3 n = normalize(NrmDecode(v.rgb)); v = float4(NrmEncode(n), v.a); }
+    _UpDst[dst] = v;
+}
+
+// ------------------------------------------------------------------
+// Metrics: reference vs candidate; per-thread partial sums, CPU merges.
+// 指标：参考与候选比较；线程局部累加，CPU合并。
+// ------------------------------------------------------------------
+Texture2D<float4> _Ref;
+Texture2D<float4> _Cmp;
+
+struct Partials
+{
+    float ssimSum; float cnt;
+    float dESum; float dEW;
+    float aErrSum; float iouA; float iouB; float iouAB;
+    float graySE0; float graySE1; float graySE2; float graySE3;
+    float nSum; float nCnt;
+    float hDE[24];      // dE histogram 0..24 step 1 / dE直方图
+    float hN[36];       // normal angle hist 0..36deg step 1 / 法线角度直方图
+};
+
+RWStructuredBuffer<Partials> _Partials;
+
+cbuffer ATOMetrics : register(b1)
+{
+    int2 _RegionOffset; // region origin inside full RT / 区域在完整RT中的原点
+    int2 _TexSize;      // region size / 区域尺寸
+    int _MetricMask;    // 1 ssim, 2 dE, 4 alpha, 8 normal, 16 gray / 指标掩码
+    float _Cutoff;
+    int _AlphaWeight;   // weight color metrics by reference alpha / 以参考alpha加权颜色指标
+    uint _ThreadCols;   // dispatch width * 8 / 线程网格宽
+    uint _ThreadRows;
+    uint _PixelCount;
+    float _Pad0;
+}
+
+float Gauss(float2 d) { return exp(-dot(d, d) / (2.0 * 1.5 * 1.5)); }
+float Luma(float3 c) { return dot(c, float3(0.2126, 0.7152, 0.0722)); }
+float3 Unpremult(float4 c) { return c.a > 0.0039 ? c.rgb / c.a : 0; }
+
+float DeltaE2000(float3 lab1, float3 lab2)
+{
+    float L1 = lab1.x, a1 = lab1.y, b1 = lab1.z;
+    float L2 = lab2.x, a2 = lab2.y, b2 = lab2.z;
+    float C1 = sqrt(a1 * a1 + b1 * b1);
+    float C2 = sqrt(a2 * a2 + b2 * b2);
+    float Cb = 0.5 * (C1 + C2);
+    float Cb7 = pow(Cb, 7.0);
+    float G = 0.5 * (1.0 - sqrt(Cb7 / (Cb7 + 6103515625.0))); // 25^7
+    float ap1 = (1.0 + G) * a1, ap2 = (1.0 + G) * a2;
+    float Cp1 = sqrt(ap1 * ap1 + b1 * b1), Cp2 = sqrt(ap2 * ap2 + b2 * b2);
+    float hp1 = (ap1 == 0 && b1 == 0) ? 0.0 : atan2(b1, ap1) * 180.0 / PI;
+    if (hp1 < 0) hp1 += 360.0;
+    float hp2 = (ap2 == 0 && b2 == 0) ? 0.0 : atan2(b2, ap2) * 180.0 / PI;
+    if (hp2 < 0) hp2 += 360.0;
+    float dLp = L2 - L1;
+    float dCp = Cp2 - Cp1;
+    float dhp = 0.0;
+    if (Cp1 * Cp2 != 0.0)
+    {
+        dhp = hp2 - hp1;
+        if (dhp > 180.0) dhp -= 360.0;
+        else if (dhp < -180.0) dhp += 360.0;
+    }
+    float dHp = 2.0 * sqrt(Cp1 * Cp2) * sin(dhp * PI / 360.0);
+    float Lbp = 0.5 * (L1 + L2);
+    float Cbp = 0.5 * (Cp1 + Cp2);
+    float hbp = 0.0;
+    if (Cp1 * Cp2 != 0.0)
+    {
+        hbp = 0.5 * (hp1 + hp2);
+        if (abs(hp1 - hp2) > 180.0)
+        {
+            if (hp1 + hp2 < 360.0) hbp += 180.0; else hbp -= 180.0;
+        }
+    }
+    else hbp = hp1 + hp2;
+    float T = 1.0 - 0.17 * cos((hbp - 30.0) * PI / 180.0)
+                + 0.24 * cos(2.0 * hbp * PI / 180.0)
+                + 0.32 * cos((3.0 * hbp + 6.0) * PI / 180.0)
+                - 0.20 * cos((4.0 * hbp - 63.0) * PI / 180.0);
+    float dTheta = 30.0 * exp(-pow((hbp - 275.0) / 25.0, 2.0));
+    float Cbp7 = pow(Cbp, 7.0);
+    float Rc = 2.0 * sqrt(Cbp7 / (Cbp7 + 6103515625.0));
+    float Lm50 = (Lbp - 50.0) * (Lbp - 50.0);
+    float Sl = 1.0 + 0.015 * Lm50 / sqrt(20.0 + Lm50);
+    float Sc = 1.0 + 0.045 * Cbp;
+    float Sh = 1.0 + 0.015 * Cbp * T;
+    float Rt = -sin(2.0 * dTheta * PI / 180.0) * Rc;
+    float tL = dLp / Sl, tC = dCp / Sc, tH = dHp / Sh;
+    return sqrt(max(0, tL * tL + tC * tC + tH * tH + Rt * tC * tH));
+}
+
+float3 RgbToLab(float3 c)
+{
+    float X = dot(c, float3(0.4124, 0.3576, 0.1805)) / 0.95047;
+    float Y = dot(c, float3(0.2126, 0.7152, 0.0722));
+    float Z = dot(c, float3(0.0193, 0.1192, 0.9505)) / 1.08883;
+    float3 v = float3(X, Y, Z);
+    float3 f = v > 0.008856 ? pow(v, 1.0 / 3.0) : (7.787 * v + 16.0 / 116.0);
+    return float3(116.0 * f.y - 16.0, 500.0 * (f.x - f.y), 200.0 * (f.y - f.z));
+}
+
+float LocalSSIM(uint2 p)
+{
+    const float C1 = 0.01 * 0.01, C2 = 0.03 * 0.03;
+    float muX = 0, muY = 0, sXX = 0, sYY = 0, sXY = 0, wsum = 0;
+    [loop]
+    for (int dy = -5; dy <= 5; dy++)
+    {
+        [loop]
+        for (int dx = -5; dx <= 5; dx++)
+        {
+            int2 q = clamp(int2(p) + int2(dx, dy), int2(0, 0), _TexSize - 1) + _RegionOffset;
+            float w = Gauss(float2(dx, dy));
+            float x = Luma(Unpremult(_Ref.Load(uint3(q, 0)).rgb));
+            float y = Luma(Unpremult(_Cmp.Load(uint3(q, 0)).rgb));
+            muX += w * x; muY += w * y;
+            sXX += w * x * x; sYY += w * y * y; sXY += w * x * y;
+            wsum += w;
+        }
+    }
+    muX /= wsum; muY /= wsum;
+    sXX = sXX / wsum - muX * muX; sYY = sYY / wsum - muY * muY; sXY = sXY / wsum - muX * muY;
+    return ((2 * muX * muY + C1) * (2 * sXY + C2)) / ((muX * muX + muY * muY + C1) * (sXX + sYY + C2));
+}
+
+[numthreads(8, 8, 1)]
+void ReduceMetrics(uint3 gid : SV_DispatchThreadID)
+{
+    Partials P = (Partials)0;
+    uint idx = gid.y * _ThreadCols + gid.x;
+    uint total = _ThreadCols * _ThreadRows;
+    for (uint pi = idx; pi < _PixelCount; pi += total)
+    {
+        uint2 p = uint2(pi % _TexSize.x, pi / _TexSize.x);            // region-local / 区域局部
+        uint2 fp = p + (uint2)_RegionOffset;                          // full-RT coords / 完整RT坐标
+        float4 r = _Ref.Load(uint3(fp, 0));
+        float4 c = _Cmp.Load(uint3(fp, 0));
+        float3 rc = Unpremult(r), cc = Unpremult(c);
+        float w = _AlphaWeight > 0.5 ? saturate(r.a * 4.0) : 1.0; // transparent px ignored for dE / 透明像素不参与dE
+
+        if (_MetricMask & 1) P.ssimSum += LocalSSIM(p);
+        if (_MetricMask & 2)
+        {
+            float dE = DeltaE2000(RgbToLab(rc), RgbToLab(cc));
+            P.dESum += dE * w; P.dEW += w;
+            P.hDE[min(23, (uint)floor(dE))] += w;
+        }
+        if (_MetricMask & 4)
+        {
+            P.aErrSum += (r.a - c.a) * (r.a - c.a);
+            bool ca = r.a > _Cutoff, cb = c.a > _Cutoff;
+            P.iouA += ca ? 1 : 0; P.iouB += cb ? 1 : 0; P.iouAB += (ca && cb) ? 1 : 0;
+        }
+        if (_MetricMask & 8)
+        {
+            float3 rn = normalize(NrmDecode(r.rgb)), cn = normalize(NrmDecode(c.rgb));
+            float ang = degrees(acos(clamp(dot(rn, cn), -1.0, 1.0)));
+            P.nSum += ang; P.nCnt += 1;
+            P.hN[min(35, (uint)floor(ang))] += 1;
+        }
+        if (_MetricMask & 16)
+        {
+            float4 d = r - c;
+            P.graySE0 += d.r * d.r; P.graySE1 += d.g * d.g; P.graySE2 += d.b * d.b; P.graySE3 += d.a * d.a;
+        }
+        P.cnt += 1;
+    }
+    _Partials[idx] = P;
+}
+
+// ------------------------------------------------------------------
+// ScanTexture: whole-texture min/max alpha & grayscale check (util)
+// 整图alpha最值与灰度检查（工具）
+// ------------------------------------------------------------------
+Texture2D<float4> _ScanSrc;
+RWStructuredBuffer<float4> _ScanOut; // x: maxAlpha y: maxChannelDelta z,w unused / 输出
+
+cbuffer ATOScan : register(b2)
+{
+    uint _ScanPixelCount;
+    uint _ScanThreadCols;
+    uint _ScanThreadRows;
+}
+
+[numthreads(8, 8, 1)]
+void ScanTexture(uint3 gid : SV_DispatchThreadID)
+{
+    uint2 sz;
+    _ScanSrc.GetDimensions(sz.x, sz.y);
+    uint idx = gid.y * _ScanThreadCols + gid.x;
+    uint total = _ScanThreadCols * _ScanThreadRows;
+    float maxA = 0, maxD = 0;
+    for (uint pi = idx; pi < _ScanPixelCount; pi += total)
+    {
+        uint2 p = uint2(pi % sz.x, pi / sz.x);
+        float4 s = _ScanSrc.Load(uint3(p, 0));
+        maxA = max(maxA, s.a);
+        maxD = max(maxD, abs(s.r - s.g));
+        maxD = max(maxD, abs(s.r - s.b));
+    }
+    _ScanOut[idx] = float4(maxA, maxD, 0, 0);
+}

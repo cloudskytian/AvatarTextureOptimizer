@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>AtoCoreTests</AssemblyName>
+    <RootNamespace>AtoCoreTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Link the pure C# core sources from the Unity package so they are compiled & tested as-is. -->
+    <!-- 链接 Unity 包中的纯 C# 核心源文件，原样编译并测试。 -->
+    <Compile Include="../../Editor/Optimization/Packing/PackingCore.cs" />
+    <Compile Include="../../Editor/Optimization/QualityMath.cs" />
+    <Compile Include="../../Editor/Analysis/IslandCore.cs" />
+  </ItemGroup>
+
+</Project>
