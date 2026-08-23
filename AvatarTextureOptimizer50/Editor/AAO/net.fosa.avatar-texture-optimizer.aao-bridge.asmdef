@@ -1,0 +1,27 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer.aao-bridge",
+    "rootNamespace": "net.fosa.ato.editor.aao",
+    "references": [
+        "net.fosa.avatar-texture-optimizer.editor",
+        "com.anatawa12.avatar-optimizer.api.editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ATO_AAO"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.anatawa12.avatar-optimizer",
+            "expression": "1.8.0",
+            "define": "ATO_AAO"
+        }
+    ],
+    "noEngineReferences": false
+}

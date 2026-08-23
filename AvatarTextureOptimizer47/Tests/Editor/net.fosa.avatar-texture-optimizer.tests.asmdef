@@ -1,0 +1,14 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer.tests",
+  "rootNamespace": "Fosa.AvatarTextureOptimizer.Tests",
+  "references": [
+    "net.fosa.avatar-texture-optimizer.runtime",
+    "net.fosa.avatar-texture-optimizer.editor",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"]
+}

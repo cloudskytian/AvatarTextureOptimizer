@@ -1,0 +1,56 @@
+#pragma kernel InitSeeds
+#pragma kernel JumpFlood
+#pragma kernel Fill
+
+Texture2D<float> _Mask;
+Texture2D<float4> _Color;
+Texture2D<float2> _SeedRead;
+RWTexture2D<float2> _SeedWrite;
+RWTexture2D<float4> _Output;
+int _Width;
+int _Height;
+int _Jump;
+int _KeepBlankAlphaZero;
+
+[numthreads(8,8,1)]
+void InitSeeds(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _Width || id.y >= _Height) return;
+    _SeedWrite[id.xy] = _Mask[id.xy] > 0.5 ? float2(id.xy) : float2(-1, -1);
+}
+
+[numthreads(8,8,1)]
+void JumpFlood(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _Width || id.y >= _Height) return;
+    float2 pixel = float2(id.xy);
+    float2 best = _SeedRead[id.xy];
+    float bestDistance = best.x >= 0 ? dot(best - pixel, best - pixel) : 3.402823e+38;
+    [unroll]
+    for (int oy = -1; oy <= 1; oy++)
+    {
+        [unroll]
+        for (int ox = -1; ox <= 1; ox++)
+        {
+            int2 q = int2(id.xy) + int2(ox, oy) * _Jump;
+            if (q.x < 0 || q.y < 0 || q.x >= _Width || q.y >= _Height) continue;
+            float2 seed = _SeedRead[q];
+            if (seed.x < 0) continue;
+            float distance = dot(seed - pixel, seed - pixel);
+            if (distance < bestDistance) { bestDistance = distance; best = seed; }
+        }
+    }
+    _SeedWrite[id.xy] = best;
+}
+
+[numthreads(8,8,1)]
+void Fill(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _Width || id.y >= _Height) return;
+    float4 original = _Color[id.xy];
+    if (_Mask[id.xy] > 0.5) { _Output[id.xy] = original; return; }
+    float2 seed = _SeedRead[id.xy];
+    float4 value = seed.x >= 0 ? _Color[int2(seed + 0.5)] : float4(0,0,0,0);
+    if (_KeepBlankAlphaZero != 0) value.a = 0;
+    _Output[id.xy] = value;
+}

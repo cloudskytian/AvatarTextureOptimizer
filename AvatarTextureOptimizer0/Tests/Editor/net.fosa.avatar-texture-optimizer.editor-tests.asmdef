@@ -1,0 +1,17 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer.editor-tests",
+  "rootNamespace": "Fosa.AvatarTextureOptimizer.Tests",
+  "references": [
+    "net.fosa.avatar-texture-optimizer.runtime",
+    "net.fosa.avatar-texture-optimizer.editor",
+    "nadena.dev.ndmf",
+    "Unity.Collections",
+    "Unity.Mathematics",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false,
+  "noEngineReferences": false
+}

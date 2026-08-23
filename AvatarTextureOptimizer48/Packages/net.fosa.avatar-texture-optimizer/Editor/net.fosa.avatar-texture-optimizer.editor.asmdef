@@ -1,0 +1,20 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer.editor",
+  "displayName": "Avatar Texture Optimizer (Editor)",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "references": [
+    "net.fosa.avatar-texture-optimizer.runtime",
+    "nadena.dev.ndmf",
+    "nadena.dev.ndmf.runtime",
+    "VRC.SDKBase",
+    "VRC.SDK3A",
+    "Unity.Burst",
+    "Unity.Collections",
+    "Unity.Mathematics"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "description": "Editor assemblies for Avatar Texture Optimizer: the NDMF build pipeline, analysis, quality metrics, packing, baking and write-back. / ATO 编辑器程序集：NDMF 构建流水线、分析、质量算法、装箱、烘焙与回写。"
+}

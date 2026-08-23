@@ -1,0 +1,55 @@
+#pragma kernel LocalSsim
+
+Texture2D<float4> _Original;
+Texture2D<float4> _Candidate;
+RWTexture2D<float2> _SsimOutput;
+int _Width;
+int _DataHeight;
+int _OutputHeight;
+int _CenterOffset;
+
+float Luma(float3 color) { return dot(color, float3(0.2126, 0.7152, 0.0722)); }
+float Weight(int x, int y) { return exp(-(x * x + y * y) / 4.5); }
+
+[numthreads(8,8,1)]
+void LocalSsim(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _Width || id.y >= _OutputHeight) return;
+    int centerY = int(id.y) + _CenterOffset;
+    float sumWeight = 0;
+    float meanA = 0;
+    float meanB = 0;
+    for (int oy = -5; oy <= 5; oy++)
+    for (int ox = -5; ox <= 5; ox++)
+    {
+        int2 p = int2(clamp(int(id.x) + ox, 0, _Width - 1), clamp(centerY + oy, 0, _DataHeight - 1));
+        float weight = Weight(ox, oy);
+        sumWeight += weight;
+        meanA += Luma(_Original[p].rgb) * weight;
+        meanB += Luma(_Candidate[p].rgb) * weight;
+    }
+    meanA /= sumWeight;
+    meanB /= sumWeight;
+    float varianceA = 0;
+    float varianceB = 0;
+    float covariance = 0;
+    for (int oy = -5; oy <= 5; oy++)
+    for (int ox = -5; ox <= 5; ox++)
+    {
+        int2 p = int2(clamp(int(id.x) + ox, 0, _Width - 1), clamp(centerY + oy, 0, _DataHeight - 1));
+        float weight = Weight(ox, oy);
+        float a = Luma(_Original[p].rgb) - meanA;
+        float b = Luma(_Candidate[p].rgb) - meanB;
+        varianceA += weight * a * a;
+        varianceB += weight * b * b;
+        covariance += weight * a * b;
+    }
+    varianceA /= sumWeight;
+    varianceB /= sumWeight;
+    covariance /= sumWeight;
+    const float c1 = 0.0001;
+    const float c2 = 0.0009;
+    float luminance = (2 * meanA * meanB + c1) / (meanA * meanA + meanB * meanB + c1);
+    float contrastStructure = (2 * covariance + c2) / (varianceA + varianceB + c2);
+    _SsimOutput[id.xy] = float2(saturate(luminance * contrastStructure), saturate(contrastStructure));
+}

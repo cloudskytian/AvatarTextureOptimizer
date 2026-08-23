@@ -1,0 +1,60 @@
+{
+  "ato:report": "ATO 构建报告：{0}",
+  "ato:report:description": "{1}",
+  "ato:report:hint": "详情已折叠，请在 NDMF 控制台中展开查看。",
+
+  "ato:error:component-placement": "ATO 组件必须挂在 Avatar 根物体（带 VRCAvatarDescriptor 的物体）上。当前发现于：{0}",
+  "ato:error:component-placement:description": "请移动或删除多余组件，确保整个 Avatar 只有一个 ATO 组件且挂在根物体上。",
+  "ato:error:multiple-components": "发现多个 ATO 组件（{0} 个），构建已中止。",
+  "ato:error:multiple-components:description": "一个 Avatar（含子级）只允许挂载一个 ATO 组件。",
+
+  "ui.language": "语言 / Language",
+  "ui.language.auto": "自动（跟随 NDMF）",
+  "ui.generateAtlas": "生成图集",
+  "ui.generateAtlas.tip": "关闭后仅整图缩放，不剔除未用UV、不重排UV。",
+  "ui.preset": "质量挡位",
+  "ui.quality": "质量（高级）",
+  "ui.atlas": "图集选项（高级）",
+  "ui.compression": "贴图/图集格式",
+  "ui.platforms": "平台覆盖",
+  "ui.whitelist": "白名单",
+  "ui.whitelist.tip": "不限对象类型；条目引用到的全部贴图跳过所有优化。",
+  "ui.debug": "调试",
+  "ui.verbose": "详细 [ATO] 日志",
+
+  "preset.Custom": "自定义（默认全部近无损）",
+  "preset.NearLossless": "近无损",
+  "preset.Ultra": "极致",
+  "preset.High": "高（推荐）",
+  "preset.Balanced": "均衡",
+  "preset.Aggressive": "激进",
+
+  "q.msssim": "MS-SSIM ≥",
+  "q.deltaE": "ΔE2000 平均 ≤",
+  "q.alphaIou": "Alpha 轮廓 IoU ≥（Cutout）",
+  "q.alphaRmse": "Alpha RMSE ≤（Blend）",
+  "q.normalMean": "法线角度均值 ≤（°）",
+  "q.normalP95": "法线角度 p95 ≤（°）",
+  "q.grayRmse": "灰度 RMSE ≤",
+  "q.densityMin": "最小像素密度（px/m）",
+  "q.densityMax": "最大像素密度（px/m）",
+
+  "a.npot": "实验性：NPOT 图集（64px 步进）",
+  "a.npot.tip": "NPOT 可节省空间；不支持格式自动剔除，压缩失败自动回退。",
+  "a.padding": "最小间距",
+  "a.maxSize": "图集最大边长（px）",
+
+  "c.currentPlatform": "当前构建平台",
+  "c.opaque": "不透明贴图格式",
+  "c.transparent": "透明贴图格式",
+  "c.normal": "法线贴图格式",
+  "c.grayscale": "灰度/蒙版格式",
+  "c.auto": "自动（推荐）",
+  "c.mipAndStream": "Mip+流送",
+  "c.mip.tip": "Mipmap 与 MipStreaming 绑定为同一开关（VRChat 要求开 Mipmap 必须开 Streaming）。",
+
+  "p.enable": "覆盖 {0} 平台设置",
+
+  "d.dedupMaterials": "去重完全相同的材质",
+  "d.dedupTextures": "去重完全相同的贴图/图集"
+}

@@ -1,0 +1,20 @@
+{
+    "name": "net.fosa.avatar-texture-optimizer",
+    "displayName": "Avatar Texture Optimizer",
+    "version": "0.1.0",
+    "unity": "2022.3",
+    "description": "NDMF texture optimizer for VRChat avatars: island-aware quality scaling, UV-atlas repacking and animation-safe rebinding. / 针对 VRChat Avatar 的 NDMF 贴图优化器：UV 岛质量缩放、图集重排与动画安全重绑定。",
+    "author": {
+        "name": "fosa"
+    },
+    "vpmDependencies": {
+        "nadena.dev.ndmf": ">=1.14.4 <2.0.0",
+        "com.vrchat.avatars": ">=3.7.0",
+        "com.vrchat.base": ">=3.7.0"
+    },
+    "dependencies": {
+        "com.unity.burst": "1.8.12",
+        "com.unity.collections": "2.1.4",
+        "com.unity.mathematics": "1.2.6"
+    }
+}

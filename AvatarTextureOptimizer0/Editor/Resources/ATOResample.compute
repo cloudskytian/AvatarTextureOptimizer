@@ -1,0 +1,202 @@
+#pragma kernel ResamplePoint
+#pragma kernel ResampleLinear
+
+#include "UnityCG.cginc"
+
+Texture2D<float4> _Source;
+RWTexture2D<float4> _Destination;
+int2 _SourceSize;
+int2 _DestinationSize;
+float4 _UvRect;
+int _InputPremultiplied;
+int _OutputStraightAlpha;
+int _TextureKind;
+// Reconstructs a quarter-turn-packed atlas region back into the source island's orientation.
+// 将旋转四分之一圈后装入图集的区域还原为源 UV 岛方向。
+int _RotateSample;
+// 0: imported normal map (Unity platform decode), 1: encoded RGB, 2: generated RG-or-AG, 3: generated AG.
+int _InputNormalEncoding;
+int _SourceMip;
+
+float3 NormalizeEncodedNormal(float3 encoded)
+{
+    float3 normal = encoded * 2.0 - 1.0;
+    float lengthSquared = dot(normal, normal);
+    normal = lengthSquared > 1e-12 ? normal * rsqrt(lengthSquared) : float3(0.0, 0.0, 1.0);
+    return normal * 0.5 + 0.5;
+}
+
+float4 Prepare(float4 value)
+{
+    // Unity's helper handles the platform's RG or AG normal-map packing before interpolation.
+    if (_TextureKind == 2)
+    {
+        float3 normal;
+        if (_InputNormalEncoding == 0)
+        {
+            normal = UnpackNormal(value);
+        }
+        else if (_InputNormalEncoding == 1)
+        {
+            normal = NormalizeEncodedNormal(value.rgb) * 2.0 - 1.0;
+        }
+        else
+        {
+            float encodedX = _InputNormalEncoding == 3 ? value.a : value.r * value.a;
+            normal.xy = float2(encodedX, value.g) * 2.0 - 1.0;
+            normal.z = sqrt(1.0 - saturate(dot(normal.xy, normal.xy)));
+        }
+        value = float4(normal * 0.5 + 0.5, 1.0);
+    }
+    // Only true color-alpha data uses premultiplied filtering. Packed grayscale channels and opaque/normal
+    // data must keep RGB independent from A. / 只有透明彩色贴图使用预乘过滤；打包通道不得被 A 调制。
+    if (_TextureKind == 1 && _InputPremultiplied == 0) value.rgb *= value.a;
+    return value;
+}
+
+float4 Finish(float4 value)
+{
+    if (_TextureKind == 1 && _OutputStraightAlpha != 0 && value.a > 1e-7) value.rgb /= value.a;
+    if (_TextureKind == 2) value = float4(NormalizeEncodedNormal(value.rgb), 1.0);
+    return value;
+}
+
+float4 LoadClamped(int2 location)
+{
+    location = clamp(location, int2(0, 0), _SourceSize - 1);
+    return Prepare(_Source.Load(int3(location, _SourceMip)));
+}
+
+float2 DestinationUv(uint2 pixel)
+{
+    float2 local = (float2(pixel) + 0.5) / _DestinationSize;
+    // Atlas packing maps source (u,v) to (1-v,u). Apply the same mapping while sampling the
+    // packed rectangle so the destination is reconstructed in source orientation.
+    if (_RotateSample != 0) local = float2(1.0 - local.y, local.x);
+    return _UvRect.xy + local * _UvRect.zw;
+}
+
+[numthreads(8,8,1)]
+void ResamplePoint(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= _DestinationSize)) return;
+    float2 uv = DestinationUv(id.xy);
+    int2 sourcePixel = clamp((int2)floor(uv * _SourceSize), int2(0, 0), _SourceSize - 1);
+    _Destination[id.xy] = Finish(LoadClamped(sourcePixel));
+}
+
+[numthreads(8,8,1)]
+void ResampleLinear(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= _DestinationSize)) return;
+    float2 uv = DestinationUv(id.xy);
+    float2 position = uv * _SourceSize - 0.5;
+    int2 basePixel = (int2)floor(position);
+    float2 fraction = position - basePixel;
+    float4 a = lerp(LoadClamped(basePixel), LoadClamped(basePixel + int2(1, 0)), fraction.x);
+    float4 b = lerp(LoadClamped(basePixel + int2(0, 1)), LoadClamped(basePixel + 1), fraction.x);
+    _Destination[id.xy] = Finish(lerp(a, b, fraction.y));
+}
+
+#pragma kernel ClearAtlas
+#pragma kernel CopyMasked
+#pragma kernel PushLevel
+#pragma kernel PullLevel
+#pragma kernel Unpremultiply
+
+RWTexture2D<float4> _Atlas;
+RWTexture2D<float> _Validity;
+Texture2D<float> _Mask;
+int2 _AtlasSize;
+int2 _CopyOffset;
+int2 _CopySize;
+int _RotateCopy;
+Texture2D<float4> _FineColor;
+Texture2D<float> _FineValidity;
+Texture2D<float4> _CoarseColor;
+Texture2D<float> _CoarseValidity;
+RWTexture2D<float4> _OutputColor;
+RWTexture2D<float> _OutputValidity;
+int2 _FineSize;
+int2 _CoarseSize;
+
+[numthreads(8,8,1)]
+void ClearAtlas(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= _AtlasSize)) return;
+    _Atlas[id.xy] = 0;
+    _Validity[id.xy] = 0;
+}
+
+[numthreads(8,8,1)]
+void CopyMasked(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= _CopySize)) return;
+    int2 sourcePixel = int2(id.xy);
+    int2 destinationPixel = _CopyOffset + sourcePixel;
+    if (_RotateCopy != 0)
+    {
+        sourcePixel = int2(id.y, _CopySize.x - 1 - id.x);
+    }
+    if (_Mask.Load(int3(sourcePixel, 0)) <= 0.5) return;
+    _Atlas[destinationPixel] = _Source.Load(int3(sourcePixel, 0));
+    _Validity[destinationPixel] = 1;
+}
+
+[numthreads(8,8,1)]
+void PushLevel(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= _CoarseSize)) return;
+    float4 sum = 0; float weight = 0;
+    [unroll] for (int y = 0; y < 2; y++) [unroll] for (int x = 0; x < 2; x++)
+    {
+        int2 location = min(int2(id.xy) * 2 + int2(x, y), _FineSize - 1);
+        float valid = _FineValidity.Load(int3(location, 0));
+        sum += _FineColor.Load(int3(location, 0)) * valid; weight += valid;
+    }
+    _OutputColor[id.xy] = weight > 0 ? sum / weight : 0;
+    _OutputValidity[id.xy] = weight > 0 ? 1 : 0;
+}
+
+[numthreads(8,8,1)]
+void PullLevel(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= _FineSize)) return;
+    float valid = _FineValidity.Load(int3(id.xy, 0));
+    if (valid > 0.5)
+    {
+        _OutputColor[id.xy] = _FineColor.Load(int3(id.xy, 0));
+        _OutputValidity[id.xy] = 1;
+    }
+    else
+    {
+        int2 coarse = min(int2(id.xy) / 2, _CoarseSize - 1);
+        float4 padding = _CoarseColor.Load(int3(coarse, 0));
+        if (_TextureKind == 1)
+        {
+            if (padding.a > 1e-7) padding.rgb /= padding.a;
+            padding.a = 0;
+        }
+        else if (_TextureKind == 2)
+        {
+            padding.rgb = NormalizeEncodedNormal(padding.rgb);
+            padding.a = 1;
+        }
+        _OutputColor[id.xy] = padding;
+        _OutputValidity[id.xy] = _CoarseValidity.Load(int3(coarse, 0));
+    }
+}
+
+[numthreads(8,8,1)]
+void Unpremultiply(uint3 id : SV_DispatchThreadID)
+{
+    if (any(id.xy >= _AtlasSize)) return;
+    float4 value = _Atlas[id.xy];
+    if (_TextureKind == 1 && value.a > 1e-7) value.rgb /= value.a;
+    if (_TextureKind == 2)
+    {
+        value.rgb = NormalizeEncodedNormal(value.rgb);
+        value.a = 1;
+    }
+    _Atlas[id.xy] = value;
+}

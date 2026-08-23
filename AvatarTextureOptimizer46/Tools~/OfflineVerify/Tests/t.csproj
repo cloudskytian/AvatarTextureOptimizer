@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AtoPackage Condition="'$(AtoPackage)'==''">$(MSBuildThisFileDirectory)../../../Packages/net.fosa.avatar-texture-optimizer</AtoPackage>
+    <RefRoot Condition="'$(RefRoot)'==''">$(MSBuildThisFileDirectory)../../../.verify/refs</RefRoot>
+    <UnityRefs Condition="'$(UnityRefs)'==''">$(MSBuildThisFileDirectory)../../../.verify/unityrefs</UnityRefs>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>CS8981;CS0169;CS0414;CS0649;CS1591;CS0162;CS0219</NoWarn>
+    <DefineConstants>ATO_TEST</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Tests.Packing.cs" />
+    <Compile Include="MiniUnity.cs" />
+    <Compile Include="$(AtoPackage)/Editor/Quality/ColorMath.cs" />
+    <Compile Include="$(AtoPackage)/Runtime/AtoEnums.cs" />
+    <Compile Include="$(AtoPackage)/Editor/Model/AtoModel.cs" />
+    <Compile Include="$(AtoPackage)/Editor/Packing/BitmaskPacker.cs" />
+    <Compile Include="$(AtoPackage)/Editor/Packing/AtlasCandidatePool.cs" />
+    <Compile Include="$(AtoPackage)/Editor/Apply/AtlasUvMapping.cs" />
+
+    <Compile Include="$(UnityRefs)/com.unity.mathematics/Unity.Mathematics/**/*.cs" Exclude="$(UnityRefs)/com.unity.mathematics/Unity.Mathematics/math_unity_conversion.cs;$(UnityRefs)/com.unity.mathematics/Unity.Mathematics/PropertyAttributes.cs" />
+  </ItemGroup>
+</Project>

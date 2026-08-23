@@ -1,0 +1,60 @@
+{
+  "ato:report": "ATO build report: {0}",
+  "ato:report:description": "{1}",
+  "ato:report:hint": "Open the NDMF console for details. Details are folded per entry. / 详细信息请在 NDMF 控制台中展开查看。",
+
+  "ato:error:component-placement": "ATO component must be placed on the avatar root (the object with the VRCAvatarDescriptor). Found on: {0}",
+  "ato:error:component-placement:description": "Move or remove the component so that exactly one ATO component exists, on the avatar root object. / 请确保整个 Avatar 只存在一个 ATO 组件且挂在 Avatar 根物体上。",
+  "ato:error:multiple-components": "Multiple ATO components found ({0}); the build was aborted.",
+  "ato:error:multiple-components:description": "Only one ATO component is allowed per avatar (including children). / 一个 Avatar（含子级）只允许挂载一个 ATO 组件。",
+
+  "ui.language": "Language",
+  "ui.language.auto": "Auto (follow NDMF)",
+  "ui.generateAtlas": "Generate atlases",
+  "ui.generateAtlas.tip": "When off, textures are only scaled as a whole; UVs are never rewritten. / 关闭后仅整图缩放，绝不重排UV。",
+  "ui.preset": "Quality preset",
+  "ui.quality": "Quality (advanced)",
+  "ui.atlas": "Atlas options (advanced)",
+  "ui.compression": "Texture / atlas formats",
+  "ui.platforms": "Platform overrides",
+  "ui.whitelist": "Whitelist",
+  "ui.whitelist.tip": "Any object type. All textures referenced by listed objects skip every optimization. / 不限类型；条目引用到的全部贴图跳过所有优化。",
+  "ui.debug": "Debug",
+  "ui.verbose": "Verbose [ATO] logging",
+
+  "preset.Custom": "Custom (all near-lossless)",
+  "preset.NearLossless": "Near lossless",
+  "preset.Ultra": "Ultra",
+  "preset.High": "High (recommended)",
+  "preset.Balanced": "Balanced",
+  "preset.Aggressive": "Aggressive",
+
+  "q.msssim": "MS-SSIM ≥",
+  "q.deltaE": "ΔE2000 mean ≤",
+  "q.alphaIou": "Alpha silhouette IoU ≥ (cutout)",
+  "q.alphaRmse": "Alpha RMSE ≤ (blend)",
+  "q.normalMean": "Normal angle mean ≤ (°)",
+  "q.normalP95": "Normal angle p95 ≤ (°)",
+  "q.grayRmse": "Grayscale RMSE ≤",
+  "q.densityMin": "Min density (px/m)",
+  "q.densityMax": "Max density (px/m)",
+
+  "a.npot": "Experimental: NPOT atlases (64px steps)",
+  "a.npot.tip": "NPOT atlases may save space; unsupported formats (e.g. PVRTC) are excluded automatically and compression failures fall back safely. / NPOT 可节省空间；不支持格式自动剔除，压缩失败自动回退。",
+  "a.padding": "Minimum padding",
+  "a.maxSize": "Max atlas side (px)",
+
+  "c.currentPlatform": "Current build platform",
+  "c.opaque": "Opaque format",
+  "c.transparent": "Transparent format",
+  "c.normal": "Normal map format",
+  "c.grayscale": "Grayscale / mask format",
+  "c.auto": "Auto (recommended)",
+  "c.mipAndStream": "Mip+Stream",
+  "c.mip.tip": "Mipmaps and MipStreaming are one bound switch (VRChat requires streaming when mips are on). / Mipmap 与 MipStreaming 绑定为同一开关（VRChat 要求开启 Mipmap 必须开启 Streaming）。",
+
+  "p.enable": "Override for {0}",
+
+  "d.dedupMaterials": "Deduplicate identical materials",
+  "d.dedupTextures": "Deduplicate identical textures/atlases"
+}

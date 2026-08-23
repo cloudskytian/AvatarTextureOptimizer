@@ -1,0 +1,12 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer.runtime",
+  "rootNamespace": "Fosa.AvatarTextureOptimizer",
+  "references": ["nadena.dev.ndmf.runtime"],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": true,
+  "versionDefines": [],
+  "noEngineReferences": false
+}

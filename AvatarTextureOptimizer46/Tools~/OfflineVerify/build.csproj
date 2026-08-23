@@ -1,0 +1,107 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AtoPackage Condition="'$(AtoPackage)'==''">$(MSBuildThisFileDirectory)../../Packages/net.fosa.avatar-texture-optimizer</AtoPackage>
+    <RefRoot Condition="'$(RefRoot)'==''">$(MSBuildThisFileDirectory)../../.verify/refs</RefRoot>
+    <UnityRefs Condition="'$(UnityRefs)'==''">$(MSBuildThisFileDirectory)../../.verify/unityrefs</UnityRefs>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <LangVersion>9</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Nullable>disable</Nullable>
+    <NoWarn>CS1591;CS0618;CS8632</NoWarn>
+    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+    <DefineConstants>UNITY_2019_3_OR_NEWER;UNITY_EDITOR;UNITY_2021_1_OR_NEWER;UNITY_2021_2_OR_NEWER;UNITY_2021_3_OR_NEWER;UNITY_2022_1_OR_NEWER;UNITY_2022_2_OR_NEWER;UNITY_2022_3_OR_NEWER;UNITY_STANDALONE;UNITY_STANDALONE_WIN</DefineConstants>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Shims.cs" />
+    <Compile Include="$(AtoPackage)/Runtime/**/*.cs" />
+    <Compile Include="$(AtoPackage)/Editor/**/*.cs" />
+    <Compile Include="$(RefRoot)/nadena.dev.ndmf-1.14.4/Runtime/**/*.cs" />
+    <Compile Include="$(RefRoot)/nadena.dev.ndmf-1.14.4/Editor/**/*.cs" Exclude="$(RefRoot)/nadena.dev.ndmf-1.14.4/Editor/VRChat/**/*.cs;$(RefRoot)/nadena.dev.ndmf-1.14.4/Editor/**/*~/**/*.cs" />
+    <Compile Include="$(UnityRefs)/com.unity.mathematics/Unity.Mathematics/**/*.cs" />
+    <Compile Include="$(UnityRefs)/com.unity.burst/Runtime/**/*.cs" Exclude="$(UnityRefs)/com.unity.burst/Runtime/Editor/**/*.cs;$(UnityRefs)/com.unity.burst/Runtime/bee~/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="UnityEngine.AIModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.AIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AccessibilityModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.AccessibilityModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AndroidJNIModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.AndroidJNIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AnimationModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.AnimationModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AssetBundleModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.AssetBundleModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AudioModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.AudioModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ClothModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.ClothModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ClusterInputModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.ClusterInputModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ClusterRendererModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.ClusterRendererModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CrashReportingModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.CrashReportingModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.DSPGraphModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.DSPGraphModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.DirectorModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.DirectorModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.GIModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.GIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.GameCenterModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.GameCenterModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.GridModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.GridModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.HotReloadModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.HotReloadModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.ImageConversionModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.InputLegacyModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.InputModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.InputModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.JSONSerializeModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.JSONSerializeModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.LocalizationModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.LocalizationModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.ParticleSystemModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.PerformanceReportingModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.PerformanceReportingModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.Physics2DModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.Physics2DModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.PhysicsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ProfilerModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.ProfilerModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.RuntimeInitializeOnLoadManagerInitializerModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ScreenCaptureModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.ScreenCaptureModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.SharedInternalsModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.SharedInternalsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.SpriteMaskModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.SpriteMaskModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.SpriteShapeModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.SpriteShapeModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.StreamingModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.StreamingModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.SubstanceModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.SubstanceModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.SubsystemsModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.SubsystemsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TLSModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.TLSModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TerrainModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.TerrainModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TerrainPhysicsModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.TerrainPhysicsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TextCoreFontEngineModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.TextCoreFontEngineModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TextCoreTextEngineModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.TextCoreTextEngineModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.TilemapModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.TilemapModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIElementsModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UIElementsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIElementsNativeModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UIElementsNativeModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UNETModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UNETModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UmbraModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UmbraModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityAnalyticsCommonModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityAnalyticsCommonModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityAnalyticsModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityAnalyticsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityConnectModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityConnectModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityCurlModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityCurlModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityTestProtocolModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityTestProtocolModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityWebRequestAssetBundleModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityWebRequestAssetBundleModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityWebRequestAudioModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityWebRequestAudioModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityWebRequestModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityWebRequestTextureModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityWebRequestTextureModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UnityWebRequestWWWModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.UnityWebRequestWWWModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.VFXModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.VFXModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.VRModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.VRModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.VehiclesModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.VehiclesModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.VideoModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.VideoModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.VirtualTexturingModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.VirtualTexturingModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.WindModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.WindModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.XRModule"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.XRModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(UnityRefs)/unityengine.modules/lib/net35/UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(RefRoot)/nadena.dev.ndmf-1.14.4/Dependencies~/0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="System.Buffers"><HintPath>$(RefRoot)/nadena.dev.ndmf-1.14.4/Dependencies~/System.Buffers.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="System.Collections.Immutable"><HintPath>$(RefRoot)/nadena.dev.ndmf-1.14.4/Dependencies~/System.Collections.Immutable.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="System.Memory"><HintPath>$(RefRoot)/nadena.dev.ndmf-1.14.4/Dependencies~/System.Memory.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="System.Numerics.Vectors"><HintPath>$(RefRoot)/nadena.dev.ndmf-1.14.4/Dependencies~/System.Numerics.Vectors.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe"><HintPath>$(RefRoot)/nadena.dev.ndmf-1.14.4/Dependencies~/System.Runtime.CompilerServices.Unsafe.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEditor"><HintPath>$(UnityRefs)/u3d/lib/UnityEditor.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

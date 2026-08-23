@@ -1,0 +1,11 @@
+{
+  "name": "net.fosa.avatar-texture-optimizer.runtime",
+  "displayName": "Avatar Texture Optimizer (Runtime)",
+  "version": "0.1.0",
+  "unity": "2022.3",
+  "references": [
+    "VRC.SDKBase",
+    "VRC.SDK3A"
+  ],
+  "description": "Runtime assemblies for Avatar Texture Optimizer: the avatar component and its serialized settings. / ATO 运行时程序集：Avatar 组件与序列化设置。"
+}
